@@ -60,6 +60,7 @@ class Conference(ndb.Model):
     endDate         = ndb.DateProperty()
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
+    sessions        = ndb.StringProperty(repeated=True)
 
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
@@ -75,6 +76,7 @@ class ConferenceForm(messages.Message):
     endDate         = messages.StringField(10) #DateTimeField()
     websafeKey      = messages.StringField(11)
     organizerDisplayName = messages.StringField(12)
+    sessions        = messages.StringField(13, repeated=True)
 
 class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
@@ -107,4 +109,35 @@ class ConferenceQueryForm(messages.Message):
 class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
+
+
+###############################################################################
+#
+# Conference Session object
+#
+
+class ConferenceSession(ndb.Model):
+    """ConferenceSession -- Conference Session object"""
+    name          = ndb.StringProperty(required=True)
+    highlights    = ndb.StringProperty()
+    duration      = ndb.IntegerProperty()
+    typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
+    date          = ndb.DateProperty()
+    startTime     = ndb.TimeProperty()
+    speakers      = ndb.StringProperty(repeated=True)
+
+class ConferenceSessionForm(messages.Message):
+    """ConferenceSessionForm -- ConferenceSession outbound form message"""
+    name          = messages.StringField(1)
+    highlights    = messages.StringField(2)
+    duration      = messages.IntegerField(3)
+    typeOfSession = messages.StringField(4)
+    date          = messages.StringField(5) # DateField
+    startTime     = messages.StringField(6) # TimeField
+    websafeKey    = messages.StringField(7)
+    speakers      = messages.StringField(8, repeated=True)
+
+class ConferenceSessionForms(messages.Message):
+    """ConferenceSessionForms -- multiple ConferenceSession outbound form message"""
+    items = messages.MessageField(ConferenceSessionForm, 1, repeated=True)
 
