@@ -572,7 +572,6 @@ class ConferenceApi(remote.Service):
         """Copy relevant field from Session to SessionForm."""
         a_form = SessionForm()
         for field in a_form.all_fields():
-            print "*** field [%s] ***" % field.name
             if hasattr(a_session, field.name):
                 if field.name == 'date' or field.name == 'startTime':
                     setattr(a_form, field.name, str(getattr(a_session, field.name)))
