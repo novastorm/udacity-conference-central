@@ -581,7 +581,7 @@ class ConferenceApi(remote.Service):
         a_form.check_initialized()
         return a_form
 
-    def _createConferenceSessionObject(self, request):
+    def _storeConferenceSessionObject(self, request):
         """Create conference session object, return ConferenceSessionForm/request."""
 
         # check for valid conference
@@ -686,10 +686,10 @@ class ConferenceApi(remote.Service):
     @endpoints.method(CONF_SESS_STORE_REQUEST, ConferenceSessionForm,
         path='conference/{websafeConferenceKey}/session',
         http_method='POST',
-        name='createConferenceSession')
-    def createConferenceSession(self, request):
+        name='storeConferenceSession')
+    def storeConferenceSession(self, request):
         """Create new conference session"""
-        return self._createConferenceSessionObject(request)
+        return self._storeConferenceSessionObject(request)
 
     @endpoints.method(CONF_SESS_GET_REQUEST, ConferenceSessionForm,
         path='conference/session/{websafeConferenceSessionKey}',
