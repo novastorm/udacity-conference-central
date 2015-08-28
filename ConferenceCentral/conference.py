@@ -87,10 +87,17 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+CONF_SESS_STORE_REQUEST = endpoints.ResourceContainer(
+    ConferenceSessionForm,
+    websafeConferenceKey=messages.StringField(1))
+
 CONF_SESS_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    websafeConferenceKey=messages.StringField(1),
-    websafeConferenceSessionKey=messages.StringField(2))
+    websafeConferenceSessionKey=messages.StringField(1))
+
+CONF_SESS_POST_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceSessionKey=messages.StringField(1))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -561,17 +568,94 @@ class ConferenceApi(remote.Service):
 
 # - - - Session - - - - - - - - - - - - - - - - - - - -
 
-    def _copyConferenceSessionToForm(self, a_conference):
+    def _copyConferenceSessionToForm(self, a_session):
         """Copy relevant field from ConferenceSession to ConferenceSessionForm.
         """
         a_form = ConferenceSessionForm()
         for field in a_form.all_fields():
-            if hasattr(a_conference, field.name):
-                setattr(a_form, field.name, getattr(a_conference, field.name))
+            print "*** field [%s] ***" % field.name
+            if hasattr(a_session, field.name):
+                setattr(a_form, field.name, getattr(a_session, field.name))
             elif field.name == "websafeKey":
-                setattr(a_form, field.name, a_conference.key.urlsafe())
+                setattr(a_form, field.name, a_session.key.urlsafe())
         a_form.check_initialized()
         return a_form
+
+    def _createConferenceSessionObject(self, request):
+        """Create conference session object, return ConferenceSessionForm/request."""
+
+        # check for valid conference
+        try:
+            a_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+            a_conference = a_conference_key.get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference found with key: [%s]' % request.websafeConferenceKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        # check for session name
+        if not request.name:
+            raise endpoints.BadRequestException(
+                "Conference session 'name' field required")
+
+        # check for duplicate
+        if ConferenceSession.query(ConferenceSession.name == request.name).get():
+            raise endpoints.BadRequestException(
+                "Duplicate conference session 'name'")
+
+        # copy request input to  dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+        # remove extraneous input field data
+        del data['websafeConferenceKey']
+        del data['websafeKey']
+        # add default values for missing data
+        # convert dates from strings to Data objects
+        if data['date']:
+            data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+        if data['startTime']:
+            data['startTime'] = datetime.strptime(data['startTime'][:10], "%H%M").time()
+
+        # allocate conference session id
+        session_id = ConferenceSession.allocate_ids(size=1, parent=a_conference_key)[0]
+        session_key = ndb.Key(ConferenceSession, session_id, parent=a_conference_key)
+        data['key'] = session_key
+        # create session
+        a_session = ConferenceSession(**data)
+        a_session.put()
+        # append session to conference
+        a_conference.sessions.append(session_key.urlsafe())
+        a_conference.put()
+
+        # a_session = session_key.get()
+        # return data
+        return self._copyConferenceSessionToForm(a_session)
+
+    @ndb.transactional()
+    def _destroyConferenceSessionObject(self, request):
+        """delete conference session object, return ConferenceSessionForm"""
+
+        try:
+            a_conference_session= ndb.Key(urlsafe=request.websafeConferenceSessionKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference session key string: [%s]' % request.websafeConferenceSessionKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference session found with key: [%s]' % request.websafeConferenceSessionKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        a_conference = a_conference_session.key.parent().get()
+        a_conference.sessions.remove(a_conference_session.key.urlsafe())
+        a_conference.put()
+        a_conference_session.key.delete()
+
+        return self._copyConferenceSessionToForm(a_conference_session)
+
 
     @endpoints.method(CONF_GET_REQUEST, ConferenceSessionForms,
         path='conference/{websafeConferenceKey}/session',
@@ -589,10 +673,30 @@ class ConferenceApi(remote.Service):
                 'No conference found with key: [%s]' % request.websafeConferenceKey)
         except Exception as e:
             raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
-        session_keys = [ndb.Key(urlsafe=wsck) for wsck in a_conference.sessions]
-        session_list = ndb.get_multi(session_keys)
+
+        session_list = []
+        if hasattr(a_conference, 'sessions'):
+            session_keys = [ndb.Key(urlsafe=wsck) for wsck in a_conference.sessions]
+            session_list = ndb.get_multi(session_keys)
+
         return ConferenceSessionForms(
-            items=[_copyConferenceSessionToForm(session) for session in session_list]
+            items=[self._copyConferenceSessionToForm(session) for session in session_list]
         )
+
+    @endpoints.method(CONF_SESS_STORE_REQUEST, ConferenceSessionForm,
+        path='conference/{websafeConferenceKey}/session',
+        http_method='POST',
+        name='createConferenceSession')
+    def createConferenceSession(self, request):
+        """Create new conference session"""
+        return self._createConferenceSessionObject(request)
+
+    @endpoints.method(CONF_SESS_GET_REQUEST, ConferenceSessionForm,
+        path='conference/session/{websafeConferenceSessionKey}',
+        http_method='POST',
+        name='destroyConferenceSession')
+    def destroyConferenceSession(self, request):
+        """Create new conference session"""
+        return self._destroyConferenceSessionObject(request)
 
 api = endpoints.api_server([ConferenceApi]) # register API
