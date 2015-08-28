@@ -579,7 +579,16 @@ class ConferenceApi(remote.Service):
         name='listConferenceSessions')
     def listConferenceSessions(self, request):
         """Get list of conference Sessions"""
-        a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        try:
+            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference found with key: [%s]' % request.websafeConferenceKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
         session_keys = [ndb.Key(urlsafe=wsck) for wsck in a_conference.sessions]
         session_list = ndb.get_multi(session_keys)
         return ConferenceSessionForms(
