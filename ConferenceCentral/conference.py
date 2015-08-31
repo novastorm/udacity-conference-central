@@ -620,6 +620,11 @@ class ConferenceApi(remote.Service):
     def _storeSessionObject(self, request):
         """Create conference session object, return SessionForm/request."""
 
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
         # check for valid conference
         try:
             a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
@@ -744,6 +749,11 @@ class ConferenceApi(remote.Service):
     def _storeSessionTypeObject(self, request):
         """Create conference session type object, return SessionTypeResponse/request."""
 
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
         # check for type label
         if not request.label:
             raise endpoints.BadRequestException(
@@ -762,8 +772,14 @@ class ConferenceApi(remote.Service):
         a_session_type.put()
         return self._copySessionTypeToForm(a_session_type)
 
+
     def _destroySessionTypeObject(self, request):
         """destroy conference session type object, return SessionTypeResponse"""
+
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
 
         try:
             a_session_type= ndb.Key(urlsafe=request.websafeSessionTypeKey).get()
