@@ -141,3 +141,22 @@ class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(SessionForm, 1, repeated=True)
 
+
+###############################################################################
+#
+# SessionType object
+#
+
+class SessionType(ndb.Model):
+    """SessionType -- Session type list"""
+    label = ndb.StringProperty()
+
+class SessionTypeResponse(messages.Message):
+    """SessionTypeResponse -- Session type response form"""
+    label      = messages.StringField(1)
+    websafeKey = messages.StringField(7)
+
+class SessionTypeListResponse(messages.Message):
+    """SessionTypeListResponse -- Session type list response form"""
+    items = messages.MessageField(SessionTypeResponse, 1, repeated=True)
+

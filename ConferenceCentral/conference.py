@@ -38,6 +38,9 @@ from models import ConferenceQueryForms
 from models import Session
 from models import SessionForm
 from models import SessionForms
+from models import SessionType
+from models import SessionTypeResponse
+from models import SessionTypeListResponse
 from models import TeeShirtSize
 
 from settings import WEB_CLIENT_ID
@@ -98,6 +101,14 @@ CONF_SESS_GET_REQUEST = endpoints.ResourceContainer(
 CONF_SESS_POST_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSessionKey=messages.StringField(1))
+
+SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionTypeKey=messages.StringField(1))
+
+SESS_TYPE_POST_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionTypeKey=messages.StringField(1))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -582,6 +593,7 @@ class ConferenceApi(remote.Service):
         a_form.check_initialized()
         return a_form
 
+
     def _listSessionObjects(self, request):
         """List session objects, return SessionForms"""
         try:
@@ -604,13 +616,13 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in session_list]
         )
 
+
     def _storeSessionObject(self, request):
         """Create conference session object, return SessionForm/request."""
 
         # check for valid conference
         try:
-            a_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-            a_conference = a_conference_key.get()
+            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
         except (TypeError) as e:
             raise endpoints.NotFoundException(
                 'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
@@ -643,8 +655,8 @@ class ConferenceApi(remote.Service):
             data['startTime'] = datetime.strptime(data['startTime'], "%H:%M").time()
 
         # allocate conference session id
-        session_id = Session.allocate_ids(size=1, parent=a_conference_key)[0]
-        session_key = ndb.Key(Session, session_id, parent=a_conference_key)
+        session_id = Session.allocate_ids(size=1, parent=a_conference.key)[0]
+        session_key = ndb.Key(Session, session_id, parent=a_conference.key)
         data['key'] = session_key
         # create session
         a_session = Session(**data)
@@ -657,9 +669,10 @@ class ConferenceApi(remote.Service):
         # return data
         return self._copySessionToForm(a_session)
 
+
     @ndb.transactional()
     def _destroySessionObject(self, request):
-        """delete conference session object, return SessionForm"""
+        """destroy conference session object, return SessionForm"""
 
         try:
             a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
@@ -688,20 +701,110 @@ class ConferenceApi(remote.Service):
         """Get list of conference Sessions"""
         return self._listSessionObjects(request)
 
+
     @endpoints.method(CONF_SESS_STORE_REQUEST, SessionForm,
         path='conference/{websafeConferenceKey}/session',
         http_method='POST',
         name='createSession')
     def createSession(self, request):
-        """Create new conference session"""
+        """Create conference session"""
         return self._storeSessionObject(request)
+
 
     @endpoints.method(CONF_SESS_GET_REQUEST, SessionForm,
         path='conference/session/{websafeSessionKey}',
-        http_method='POST',
+        http_method='DELETE',
         name='destroySession')
     def destroySession(self, request):
-        """Create new conference session"""
+        """Destroy conference session"""
         return self._destroySessionObject(request)
+
+# - - - SessionType- - - - - - - - - - - - - - - - - - - -
+
+    def _copySessionTypeToForm(self, a_session_type):
+        """Copy relevant field from SessionType to SessionTypeResponse."""
+        a_form = SessionTypeResponse()
+        for field in a_form.all_fields():
+            if hasattr(a_session_type, field.name):
+                setattr(a_form, field.name, getattr(a_session_type, field.name))
+            elif field.name == "websafeKey":
+                setattr(a_form, field.name, a_session_type.key.urlsafe())
+        a_form.check_initialized()
+        return a_form
+
+
+    def _listSessionTypeObjects(self, request):
+        """List session type objects, return SessionTypeListResponse"""
+        session_type_list = SessionType.query().fetch()
+        return SessionTypeListResponse(
+            items=[self._copySessionTypeToForm(a_type) for a_type in session_type_list]
+        )
+
+
+    def _storeSessionTypeObject(self, request):
+        """Create conference session type object, return SessionTypeResponse/request."""
+
+        # check for type label
+        if not request.label:
+            raise endpoints.BadRequestException(
+                "Conference session type 'label' field required")
+
+        # check for duplicate
+        if SessionType.query(SessionType.label == request.label).get():
+            raise endpoints.BadRequestException(
+                "Duplicate conference session type 'label'")
+
+        # copy request input to  dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+
+        # create session
+        a_session_type = SessionType(**data)
+        a_session_type.put()
+        return self._copySessionTypeToForm(a_session_type)
+
+    def _destroySessionTypeObject(self, request):
+        """destroy conference session type object, return SessionTypeResponse"""
+
+        try:
+            a_session_type= ndb.Key(urlsafe=request.websafeSessionTypeKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference session key string: [%s]' % request.websafeSessionTypeKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference session found with key: [%s]' % request.websafeSessionTypeKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        a_session_type.key.delete()
+
+        return self._copySessionTypeToForm(a_session_type)
+
+
+    @endpoints.method(message_types.VoidMessage, SessionTypeListResponse,
+        path='conference/session/type',
+        http_method='GET',
+        name='listConferenceSessionTypes')
+    def listConferenceSessionTypes(self, request):
+        """Get list of conference session types"""
+        return self._listSessionTypeObjects(request)
+
+
+    @endpoints.method(SessionTypeResponse, SessionTypeResponse,
+        path='conference/session/type',
+        http_method='POST',
+        name='createSessionType')
+    def createSessionType(self, request):
+        """Create conference session"""
+        return self._storeSessionTypeObject(request)
+
+
+    @endpoints.method(SESS_TYPE_POST_REQUEST, SessionTypeResponse,
+        path='conference/session/type/{websafeSessionTypeKey}',
+        http_method='DELETE',
+        name='destroySessionType')
+    def destroySessionType(self, request):
+        """Destroy conference session type"""
+        return self._destroySessionTypeObject(request)
 
 api = endpoints.api_server([ConferenceApi]) # register API
