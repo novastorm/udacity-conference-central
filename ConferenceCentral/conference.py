@@ -689,6 +689,7 @@ class ConferenceApi(remote.Service):
             raise endpoints.UnauthorizedException('Authorization required')
         user_id = getUserId(user)
 
+        # check if session exists given websateSessionKey
         try:
             a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
         except (TypeError) as e:
@@ -701,20 +702,22 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
 
         # Not getting all the fields, so don't create a new object; just
-        # copy relevant fields from SessionForm to ConferenceSession object
+        # copy relevant fields from SessionForm to a ConferenceSession object
         for field in request.all_fields():
             data = getattr(request, field.name)
+            # remove attribute if data is an empty
+            if data == "":
+                delattr(a_course, field.name)
             # only copy fields where we get data
-            if data not in (None, []):
-                # special handling for dates (convert string to Date)
+            elif data not in (None, []):
+                # special handling for date (convert string to Date)
                 if field.name == 'date':
                     data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+                # special handling for time (convert string to Time)
                 if field.name == 'startTime':
                     data['startTime'] = datetime.strptime(data['startTime'], "%H:%M").time()
                 # write to Conference object
                 setattr(a_conference_session, field.name, data)
-            if data == "":
-                delattr(a_course, field.name)
         a_conference_session.put()
         return self._copySessionToForm(a_conference_session)
 
