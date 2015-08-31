@@ -90,9 +90,14 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+
 CONF_SESS_STORE_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     websafeConferenceKey=messages.StringField(1))
+
+CONF_SESS_UPDATE_REQUEST = endpoints.ResourceContainer(
+    SessionForm,
+    websafeSessionKey=messages.StringField(1))
 
 CONF_SESS_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
@@ -101,6 +106,7 @@ CONF_SESS_GET_REQUEST = endpoints.ResourceContainer(
 CONF_SESS_POST_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSessionKey=messages.StringField(1))
+
 
 SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
@@ -675,9 +681,51 @@ class ConferenceApi(remote.Service):
         return self._copySessionToForm(a_session)
 
 
+    def _updateSessionObject(self, request):
+        """Update conference session object, return SessionFrom"""
+
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        try:
+            a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference session key string: [%s]' % request.websafeSessionKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference session found with key: [%s]' % request.websafeSessionKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        # Not getting all the fields, so don't create a new object; just
+        # copy relevant fields from SessionForm to ConferenceSession object
+        for field in request.all_fields():
+            data = getattr(request, field.name)
+            # only copy fields where we get data
+            if data not in (None, []):
+                # special handling for dates (convert string to Date)
+                if field.name == 'date':
+                    data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+                if field.name == 'startTime':
+                    data['startTime'] = datetime.strptime(data['startTime'], "%H:%M").time()
+                # write to Conference object
+                setattr(a_conference_session, field.name, data)
+            if data == "":
+                delattr(a_course, field.name)
+        a_conference_session.put()
+        return self._copySessionToForm(a_conference_session)
+
     @ndb.transactional()
     def _destroySessionObject(self, request):
         """destroy conference session object, return SessionForm"""
+
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
 
         try:
             a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
@@ -715,6 +763,14 @@ class ConferenceApi(remote.Service):
         """Create conference session"""
         return self._storeSessionObject(request)
 
+
+    @endpoints.method(CONF_SESS_UPDATE_REQUEST, SessionForm,
+        path='conference/session/{websafeSessionKey}',
+        http_method='PUT',
+        name='updateSession')
+    def updateSession(self, request):
+        """Update conference session"""
+        return self._updateSessionObject(request)
 
     @endpoints.method(CONF_SESS_GET_REQUEST, SessionForm,
         path='conference/session/{websafeSessionKey}',
