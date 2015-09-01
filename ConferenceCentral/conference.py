@@ -911,7 +911,10 @@ class ConferenceApi(remote.Service):
         return self._getConferenceSessionsByType(request)
 
     def _getSessionsBySpeaker(self, request):
-        pass
+        a_speaker = request.speaker
+        session_list = Session.query(Session.speakers==a_speaker)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in session_list])
 
     @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
         path='conference/session/{speaker}',
