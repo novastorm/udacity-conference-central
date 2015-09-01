@@ -141,6 +141,14 @@ class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(SessionForm, 1, repeated=True)
 
+SESS_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
+    speaker=messages.StringField(1)
+    )
+SESS_BY_TYPE_REQUEST = endpoints.ResourceContainer(
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.StringField(2)
+    )
+
 
 ###############################################################################
 #

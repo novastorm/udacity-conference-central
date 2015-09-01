@@ -42,6 +42,8 @@ from models import SessionType
 from models import SessionTypeResponse
 from models import SessionTypeListResponse
 from models import TeeShirtSize
+from models import SESS_BY_SPEAKER_REQUEST
+from models import SESS_BY_TYPE_REQUEST
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -629,7 +631,6 @@ class ConferenceApi(remote.Service):
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
-        user_id = getUserId(user)
 
         # check for valid conference
         try:
@@ -687,7 +688,6 @@ class ConferenceApi(remote.Service):
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
-        user_id = getUserId(user)
 
         # check if session exists given websateSessionKey
         try:
@@ -728,7 +728,6 @@ class ConferenceApi(remote.Service):
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
-        user_id = getUserId(user)
 
         try:
             a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
@@ -881,5 +880,45 @@ class ConferenceApi(remote.Service):
     def destroySessionType(self, request):
         """Destroy conference session type"""
         return self._destroySessionTypeObject(request)
+
+    def _getConferenceSessionsByType(self, request):
+        """Get list of sessions by type for the given conference"""
+        # check for valid conference
+        try:
+            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference found with key: [%s]' % request.websafeConferenceKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        a_type = request.typeOfSession
+        a_query = Session.query(ancestor=a_conference.key)
+        session_list = a_query.filter(Session.typeOfSession == a_type)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in session_list])
+
+
+    @endpoints.method(SESS_BY_TYPE_REQUEST, SessionForms,
+        path='conference/{websafeConferenceKey}/session/{typeOfSession}',
+        http_method='GET',
+        name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Get list of conference sessions by speaker"""
+        return self._getConferenceSessionsByType(request)
+
+    def _getSessionsBySpeaker(self, request):
+        pass
+
+    @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
+        path='conference/session/{speaker}',
+        http_method='GET',
+        name='getSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """Get list of sessions by speaker across all conferences"""
+        return self._getSessionsBySpeaker(request)
 
 api = endpoints.api_server([ConferenceApi]) # register API
