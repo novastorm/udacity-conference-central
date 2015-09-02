@@ -24,6 +24,8 @@ from google.appengine.api import memcache
 from google.appengine.api import taskqueue
 from google.appengine.ext import ndb
 
+from google.net.proto.ProtocolBuffer import ProtocolBufferDecodeError
+
 from models import ConflictException
 from models import Profile
 from models import ProfileMiniForm
@@ -44,6 +46,8 @@ from models import SessionTypeListResponse
 from models import TeeShirtSize
 from models import SESS_BY_SPEAKER_REQUEST
 from models import SESS_BY_TYPE_REQUEST
+from models import ConferenceSessionWishlistRequest
+from models import SESS_WISH_STORE_REQUEST
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -689,7 +693,7 @@ class ConferenceApi(remote.Service):
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
 
-        # check if session exists given websateSessionKey
+        # check if session exists given websafeSessionKey
         try:
             a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
         except (TypeError) as e:
@@ -858,8 +862,8 @@ class ConferenceApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, SessionTypeListResponse,
         path='conference/session/type',
         http_method='GET',
-        name='listConferenceSessionTypes')
-    def listConferenceSessionTypes(self, request):
+        name='getConferenceSessionTypes')
+    def getConferenceSessionTypes(self, request):
         """Get list of conference session types"""
         return self._listSessionTypeObjects(request)
 
@@ -903,7 +907,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(SESS_BY_TYPE_REQUEST, SessionForms,
-        path='conference/{websafeConferenceKey}/session/{typeOfSession}',
+        path='conference/{websafeConferenceKey}/session/type/{typeOfSession}',
         http_method='GET',
         name='getConferenceSessionsByType')
     def getConferenceSessionsByType(self, request):
@@ -917,11 +921,85 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in session_list])
 
     @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
-        path='conference/session/{speaker}',
+        path='conference/session/speaker/{speaker}',
         http_method='GET',
         name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
         """Get list of sessions by speaker across all conferences"""
         return self._getSessionsBySpeaker(request)
+
+
+# - - - Session wishlist - - - - - - - - - - - - - - - - - - - -
+
+    def _getSessionsInWishlist(self, request):
+        """List user wishlist session objects, return SessionForms"""
+        profile = self._getProfileFromUser()
+        session_key_list = [ndb.Key(urlsafe=websafeKey) for websafeKey in profile.sessionWishlist]
+        wsck = getattr(request, 'websafeConferenceKey')
+
+        if wsck:
+            try:
+                a_conference = ndb.Key(urlsafe=wsck).get()
+            except (TypeError) as e:
+                raise endpoints.NotFoundException(
+                    'Invalid input conference key string: [%s]' % wsck)
+            except (ProtocolBufferDecodeError) as e:
+                raise endpoints.NotFoundException(
+                    'No conference found with key: [%s]' % wsck)
+            except Exception as e:
+                raise endpoints.NotFoundException('%s: %s' % (
+                    e.__class__.__name__, e))
+
+            session_list = Session.query(
+                Session.key.IN(session_key_list),
+                ancestor=a_conference.key)
+        else:
+            session_list = ndb.get_multi(session_key_list)
+
+        return SessionForms(items=[self._copySessionToForm(session) for session in session_list])
+
+    def _addSessionToWishlist(self, request):
+        """Add session to user wishlist"""
+        # get user profile
+        profile = self._getProfileFromUser()
+        # validate Key
+        try:
+            a_session_key = request.websafeSessionKey
+            a_conference_session= ndb.Key(urlsafe=a_session_key).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference session key string: [%s]' % request.websafeSessionKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference session found with key: [%s]' % request.websafeSessionKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        if a_session_key in profile.sessionWishlist:
+            raise ConflictException(
+                "Session already in wishlist")
+
+        profile.sessionWishlist.append(a_session_key)
+        profile.put()
+
+        return BooleanMessage(data=True)
+
+
+    @endpoints.method(ConferenceSessionWishlistRequest, SessionForms,
+        path='conference/session/wishlist',
+        http_method='post',
+        name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Get list of sessions in user wishlist"""
+        return self._getSessionsInWishlist(request)
+
+    @endpoints.method(SESS_WISH_STORE_REQUEST, BooleanMessage,
+        path='conference/session/{websafeSessionKey}/wishlist',
+        http_method='POST',
+        name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add given session to user wishlist"""
+        return self._addSessionToWishlist(request)
+
 
 api = endpoints.api_server([ConferenceApi]) # register API

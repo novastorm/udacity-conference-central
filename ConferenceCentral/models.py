@@ -27,6 +27,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionWishlist = ndb.StringProperty(repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -39,6 +40,7 @@ class ProfileForm(messages.Message):
     mainEmail = messages.StringField(2)
     teeShirtSize = messages.EnumField('TeeShirtSize', 3)
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
+    sessionWishlist = messages.StringField(5, repeated=True)
 
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
@@ -168,3 +170,19 @@ class SessionTypeListResponse(messages.Message):
     """SessionTypeListResponse -- Session type list response form"""
     items = messages.MessageField(SessionTypeResponse, 1, repeated=True)
 
+
+###############################################################################
+#
+# Wishlist object
+#
+
+class ConferenceSessionWishlistRequest(messages.Message):
+    """ConferenceSessionWishlistRequest -- Conference session wishlist request
+    form
+    """
+    websafeConferenceKey = messages.StringField(1)
+
+
+SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
+    websafeSessionKey=messages.StringField(1)
+    )
