@@ -27,6 +27,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionWishlist = ndb.StringProperty(repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -39,6 +40,7 @@ class ProfileForm(messages.Message):
     mainEmail = messages.StringField(2)
     teeShirtSize = messages.EnumField('TeeShirtSize', 3)
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
+    sessionWishlist = messages.StringField(5, repeated=True)
 
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
@@ -60,6 +62,7 @@ class Conference(ndb.Model):
     endDate         = ndb.DateProperty()
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
+    sessions        = ndb.StringProperty(repeated=True)
 
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
@@ -75,6 +78,7 @@ class ConferenceForm(messages.Message):
     endDate         = messages.StringField(10) #DateTimeField()
     websafeKey      = messages.StringField(11)
     organizerDisplayName = messages.StringField(12)
+    sessions        = messages.StringField(13, repeated=True)
 
 class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
@@ -108,3 +112,77 @@ class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
 
+
+###############################################################################
+#
+# Session object
+#
+
+class Session(ndb.Model):
+    """Session -- Conference Session object"""
+    name          = ndb.StringProperty(required=True)
+    highlights    = ndb.StringProperty()
+    duration      = ndb.IntegerProperty()
+    typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
+    date          = ndb.DateProperty()
+    startTime     = ndb.TimeProperty()
+    speakers      = ndb.StringProperty(repeated=True)
+
+class SessionForm(messages.Message):
+    """SessionForm -- Session outbound form message"""
+    name          = messages.StringField(1)
+    highlights    = messages.StringField(2)
+    duration      = messages.IntegerField(3)
+    typeOfSession = messages.StringField(4)
+    date          = messages.StringField(5) # DateField YYYY-MM-DD
+    startTime     = messages.StringField(6) # TimeField HH:MM
+    websafeKey    = messages.StringField(7)
+    speakers      = messages.StringField(8, repeated=True)
+
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)
+
+SESS_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
+    speaker=messages.StringField(1)
+    )
+SESS_BY_TYPE_REQUEST = endpoints.ResourceContainer(
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.StringField(2)
+    )
+
+
+###############################################################################
+#
+# SessionType object
+#
+
+class SessionType(ndb.Model):
+    """SessionType -- Session type list"""
+    label = ndb.StringProperty()
+
+class SessionTypeResponse(messages.Message):
+    """SessionTypeResponse -- Session type response form"""
+    label      = messages.StringField(1)
+    websafeKey = messages.StringField(7)
+
+class SessionTypeListResponse(messages.Message):
+    """SessionTypeListResponse -- Session type list response form"""
+    items = messages.MessageField(SessionTypeResponse, 1, repeated=True)
+
+
+###############################################################################
+#
+# Wishlist object
+#
+
+class ConferenceSessionWishlistRequest(messages.Message):
+    """ConferenceSessionWishlistRequest -- Conference session wishlist request
+    form
+    """
+    websafeConferenceKey = messages.StringField(1)
+
+
+SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
+    websafeSessionKey=messages.StringField(1)
+    )
