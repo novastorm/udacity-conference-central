@@ -186,3 +186,24 @@ class ConferenceSessionWishlistRequest(messages.Message):
 SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1)
     )
+
+###############################################################################
+#
+# Conference Speaker object
+#
+
+class ConferenceSpeaker(ndb.Model):
+    """ConferenceSpeaker -- Conference Speaker object"""
+    name        = ndb.StringProperty()
+    description = ndb.StringProperty()
+    sessions    = ndb.StringProperty(repeated=True)
+
+class ConferenceSpeakerForm(messages.Message):
+    """ConferenceSpeakerForm -- ConferenceSpeaker outbound form message"""
+    name        = messages.StringField(1)
+    description = messages.StringField(2)
+    sessions    = messages.StringField(3, repeated=True)
+
+class ConferenceSpeakerForms(messages.Message):
+    """ConferenceSpeakerForms -- multiple ConferenceSpeaker outbound form message"""
+    items = messages.MessageField(ConferenceSpeakerForm, 1, repeated=True)
