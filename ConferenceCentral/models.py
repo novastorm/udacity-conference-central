@@ -15,11 +15,33 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 import httplib
 import endpoints
 from protorpc import messages
+from protorpc import message_types
 from google.appengine.ext import ndb
 
 class ConflictException(endpoints.ServiceException):
     """ConflictException -- exception mapped to HTTP 409 response"""
     http_status = httplib.CONFLICT
+
+class ConferenceLink(ndb.Model):
+    """ConferenceLink -- used to hold basic conference information for quick access
+    to pertinent conference information
+    """
+    name          = ndb.StringProperty(required=True)
+    websafeKey    = ndb.StringProperty(required=True)
+
+class SessionLink(ndb.Model):
+    """SessionLink -- used to hold basic session information for quick access
+    to pertinent session information
+    """
+    name          = ndb.StringProperty(required=True)
+    websafeKey    = ndb.StringProperty(required=True)
+
+class SpeakerLink(ndb.Model):
+    """SpeakerLink -- used to hold basic speaker information for quick access
+    to pertinent speaker information
+    """
+    name       = ndb.StringProperty()
+    websafeKey = ndb.StringProperty()
 
 class Profile(ndb.Model):
     """Profile -- User profile object"""
@@ -27,7 +49,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
-    sessionWishlist = ndb.StringProperty(repeated=True)
+    sessionWishlist = ndb.StructuredProperty(SessionLink, repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -126,7 +148,8 @@ class Session(ndb.Model):
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
     date          = ndb.DateProperty()
     startTime     = ndb.TimeProperty()
-    speakers      = ndb.StringProperty(repeated=True)
+    # speakers      = ndb.StringProperty(repeated=True) # Speaker name
+    speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
 
 class SessionForm(messages.Message):
     """SessionForm -- Session outbound form message"""
@@ -144,9 +167,11 @@ class SessionForms(messages.Message):
     items = messages.MessageField(SessionForm, 1, repeated=True)
 
 SESS_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
     speaker=messages.StringField(1)
     )
 SESS_BY_TYPE_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1),
     typeOfSession=messages.StringField(2)
     )
@@ -164,7 +189,7 @@ class SessionType(ndb.Model):
 class SessionTypeResponse(messages.Message):
     """SessionTypeResponse -- Session type response form"""
     label      = messages.StringField(1)
-    websafeKey = messages.StringField(7)
+    websafeKey = messages.StringField(2)
 
 class SessionTypeListResponse(messages.Message):
     """SessionTypeListResponse -- Session type list response form"""
@@ -184,5 +209,65 @@ class ConferenceSessionWishlistRequest(messages.Message):
 
 
 SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
     websafeSessionKey=messages.StringField(1)
     )
+
+###############################################################################
+#
+# Speaker object
+#
+
+class Speaker(ndb.Model):
+    """Speaker -- Conference Speaker object"""
+    name        = ndb.StringProperty()
+    description = ndb.StringProperty()
+    sessions    = ndb.StructuredProperty(SessionLink, repeated=True) # Session name
+
+    # def sessions(self):
+    #     return Session.query(self.key.urlsafe().IN(Session.speakers))
+
+class SpeakerResponse(messages.Message):
+    """SpeakerForm -- Speaker outbound form message"""
+    name        = messages.StringField(1)
+    description = messages.StringField(2)
+    sessions    = messages.StringField(3, repeated=True)
+
+class SpeakerListResponse(messages.Message):
+    """SpeakerForms -- multiple Speaker outbound form message"""
+    items = messages.MessageField(SpeakerResponse, 1, repeated=True)
+
+CONF_SPEAK_INDEX_REQ = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_STORE_REQ = endpoints.ResourceContainer(
+    SpeakerResponse,
+    websafeConferenceKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_SHOW_REQ = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSpeakerKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_UPDATE_REQ = endpoints.ResourceContainer(
+    SpeakerResponse,
+    websafeSpeakerKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_DELETE_REQ = CONF_SPEAK_SHOW_REQ
+
+###############################################################################
+#
+# Session Speaker
+#
+
+SESS_SPEAK_STORE_REQ = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1),
+    websafeSpeakerKey=messages.StringField(2)
+    )
+
+SESS_SPEAK_DELETE_REQ = SESS_SPEAK_STORE_REQ
