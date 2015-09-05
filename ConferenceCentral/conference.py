@@ -1051,7 +1051,7 @@ class ConferenceApi(remote.Service):
         """Add given session to user wishlist"""
         return self._addSessionToWishlist(request)
 
-    @endpoints.method(SESS_WISH_STORE_REQUEST, BooleanMessage,
+    @endpoints.method(SESS_WISH_DELETE_REQUEST, BooleanMessage,
         path='conference/session/{websafeSessionKey}/wishlist',
         http_method='DELETE',
         name='removeSessionFromWishlist')
