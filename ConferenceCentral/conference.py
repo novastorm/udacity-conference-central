@@ -45,20 +45,11 @@ from models import SessionType
 from models import SessionTypeResponse
 from models import SessionTypeListResponse
 from models import TeeShirtSize
-from models import SESS_BY_SPEAKER_REQUEST
-from models import SESS_BY_TYPE_REQUEST
 from models import ConferenceSessionWishlistRequest
-from models import SESS_WISH_STORE_REQUEST
 from models import Speaker
+from models import SpeakerRequest
 from models import SpeakerResponse
 from models import SpeakerListResponse
-from models import CONF_SPEAK_INDEX_REQ
-from models import CONF_SPEAK_STORE_REQ
-from models import CONF_SPEAK_SHOW_REQ
-from models import CONF_SPEAK_UPDATE_REQ
-from models import CONF_SPEAK_DELETE_REQ
-from models import SESS_SPEAK_STORE_REQ
-from models import SESS_SPEAK_DELETE_REQ
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -108,30 +99,79 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 )
 
 
+CONF_SESS_INDEX_REQUEST = CONF_GET_REQUEST
+
 CONF_SESS_STORE_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     websafeConferenceKey=messages.StringField(1))
+
+CONF_SESS_SHOW_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1))
 
 CONF_SESS_UPDATE_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     websafeSessionKey=messages.StringField(1))
 
-CONF_SESS_GET_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeSessionKey=messages.StringField(1))
-
-CONF_SESS_POST_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeSessionKey=messages.StringField(1))
+CONF_SESS_DELETE_REQUEST = CONF_SESS_SHOW_REQUEST
 
 
 SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSessionTypeKey=messages.StringField(1))
 
-SESS_TYPE_POST_REQUEST = endpoints.ResourceContainer(
+SESS_TYPE_POST_REQUEST = SESS_TYPE_GET_REQUEST
+
+
+CONF_SPEAK_INDEX_REQ = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    websafeSessionTypeKey=messages.StringField(1))
+    websafeConferenceKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_STORE_REQ = endpoints.ResourceContainer(
+    SpeakerRequest,
+    websafeConferenceKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_SHOW_REQ = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSpeakerKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_UPDATE_REQ = endpoints.ResourceContainer(
+    SpeakerResponse,
+    websafeSpeakerKey=messages.StringField(1)
+    )
+
+CONF_SPEAK_DELETE_REQ = CONF_SPEAK_SHOW_REQ
+
+
+SESS_SPEAK_STORE_REQ = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1),
+    websafeSpeakerKey=messages.StringField(2)
+    )
+
+SESS_SPEAK_DELETE_REQ = SESS_SPEAK_STORE_REQ
+
+
+SESS_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    speaker=messages.StringField(1)
+    )
+SESS_BY_TYPE_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.StringField(2)
+    )
+
+SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1)
+    )
+
+SESS_WISH_DELETE_REQUEST = SESS_WISH_STORE_REQUEST
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -674,7 +714,7 @@ class ConferenceApi(remote.Service):
 
     def _listSessionObjects(self, request):
         """List session objects, return SessionForms"""
-        a_conference = self._getConference()
+        a_conference = self._getConference(request.websafeConferenceKey)
         session_list = []
         if hasattr(a_conference, 'sessions'):
             session_keys = [ndb.Key(urlsafe=wsck) for wsck in a_conference.sessions]
@@ -689,7 +729,7 @@ class ConferenceApi(remote.Service):
         """Create conference session object, return SessionForm/request."""
 
         user = self._getUser()
-        a_conference = self._getConference()
+        a_conference = self._getConference(request.websafeConferenceKey)
 
         # check for session name
         if not request.name:
@@ -724,29 +764,14 @@ class ConferenceApi(remote.Service):
         a_conference.sessions.append(session_key.urlsafe())
         a_conference.put()
 
-        # a_session = session_key.get()
-        # return data
         return self._copySessionToForm(a_session)
 
 
     def _updateSessionObject(self, request):
         """Update conference session object, return SessionFrom"""
 
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
-
-        # check if session exists given websafeSessionKey
-        try:
-            a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference session key string: [%s]' % request.websafeSessionKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference session found with key: [%s]' % request.websafeSessionKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+        user = self._getUser()
+        a_session = self._getSession(request.websafeSessionKey)
 
         # Not getting all the fields, so don't create a new object; just
         # copy relevant fields from SessionForm to a ConferenceSession object
@@ -764,38 +789,26 @@ class ConferenceApi(remote.Service):
                 if field.name == 'startTime':
                     data['startTime'] = datetime.strptime(data['startTime'], "%H:%M").time()
                 # write to Conference object
-                setattr(a_conference_session, field.name, data)
-        a_conference_session.put()
-        return self._copySessionToForm(a_conference_session)
+                setattr(a_session, field.name, data)
+        a_session.put()
+        return self._copySessionToForm(a_session)
 
     @ndb.transactional()
     def _destroySessionObject(self, request):
         """destroy conference session object, return SessionForm"""
 
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
+        user = self._getUser()
+        a_session= self._getSession(request.websafeSessionKey)
 
-        try:
-            a_conference_session= ndb.Key(urlsafe=request.websafeSessionKey).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference session key string: [%s]' % request.websafeSessionKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference session found with key: [%s]' % request.websafeSessionKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
-
-        a_conference = a_conference_session.key.parent().get()
-        a_conference.sessions.remove(a_conference_session.key.urlsafe())
+        a_conference = a_session.key.parent().get()
+        a_conference.sessions.remove(a_session.key.urlsafe())
         a_conference.put()
-        a_conference_session.key.delete()
+        a_session.key.delete()
 
-        return self._copySessionToForm(a_conference_session)
+        return self._copySessionToForm(a_session)
 
 
-    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+    @endpoints.method(CONF_SESS_INDEX_REQUEST, SessionForms,
         path='conference/{websafeConferenceKey}/session',
         http_method='GET',
         name='getConferenceSessions')
@@ -821,7 +834,7 @@ class ConferenceApi(remote.Service):
         """Update conference session"""
         return self._updateSessionObject(request)
 
-    @endpoints.method(CONF_SESS_GET_REQUEST, SessionForm,
+    @endpoints.method(CONF_SESS_DELETE_REQUEST, SessionForm,
         path='conference/session/{websafeSessionKey}',
         http_method='DELETE',
         name='destroySession')
@@ -854,9 +867,7 @@ class ConferenceApi(remote.Service):
     def _storeSessionTypeObject(self, request):
         """Create conference session type object, return SessionTypeResponse/request."""
 
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
+        user = self._getUser()
         user_id = getUserId(user)
 
         # check for type label
@@ -930,18 +941,7 @@ class ConferenceApi(remote.Service):
 
     def _getConferenceSessionsByType(self, request):
         """Get list of sessions by type for the given conference"""
-        # check for valid conference
-        try:
-            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference found with key: [%s]' % request.websafeConferenceKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
-
+        a_conference = self._getConference(request.websafeConferenceKey)
         a_type = request.typeOfSession
         a_query = Session.query(ancestor=a_conference.key)
         session_list = a_query.filter(Session.typeOfSession == a_type)
@@ -981,21 +981,12 @@ class ConferenceApi(remote.Service):
         wsck = getattr(request, 'websafeConferenceKey')
 
         if wsck:
-            try:
-                a_conference = ndb.Key(urlsafe=wsck).get()
-            except (TypeError) as e:
-                raise endpoints.NotFoundException(
-                    'Invalid input conference key string: [%s]' % wsck)
-            except (ProtocolBufferDecodeError) as e:
-                raise endpoints.NotFoundException(
-                    'No conference found with key: [%s]' % wsck)
-            except Exception as e:
-                raise endpoints.NotFoundException('%s: %s' % (
-                    e.__class__.__name__, e))
+            a_conference = self._getConference(wsck)
 
             session_list = Session.query(
                 Session.key.IN(session_key_list),
                 ancestor=a_conference.key)
+                # ancestor=wsck) # also works
         else:
             session_list = ndb.get_multi(session_key_list)
 
@@ -1006,7 +997,6 @@ class ConferenceApi(remote.Service):
         """Add session to user wishlist"""
         # get user profile
         profile = self._getProfileFromUser()
-        # validate Key
         a_session = self._getSession(request.websafeSessionKey)
 
         a_session_link = SessionLink(

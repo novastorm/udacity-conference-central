@@ -15,7 +15,6 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 import httplib
 import endpoints
 from protorpc import messages
-from protorpc import message_types
 from google.appengine.ext import ndb
 
 class ConflictException(endpoints.ServiceException):
@@ -41,26 +40,27 @@ class SpeakerLink(ndb.Model):
     to pertinent speaker information
     """
     name       = ndb.StringProperty()
+    numberOfSessions = ndb.IntegerProperty()
     websafeKey = ndb.StringProperty()
 
 class Profile(ndb.Model):
     """Profile -- User profile object"""
-    displayName = ndb.StringProperty()
-    mainEmail = ndb.StringProperty()
-    teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
+    displayName     = ndb.StringProperty()
+    mainEmail       = ndb.StringProperty()
+    teeShirtSize    = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
     sessionWishlist = ndb.StructuredProperty(SessionLink, repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
-    displayName = messages.StringField(1)
+    displayName  = messages.StringField(1)
     teeShirtSize = messages.EnumField('TeeShirtSize', 2)
 
 class ProfileForm(messages.Message):
     """ProfileForm -- Profile outbound form message"""
-    displayName = messages.StringField(1)
-    mainEmail = messages.StringField(2)
-    teeShirtSize = messages.EnumField('TeeShirtSize', 3)
+    displayName     = messages.StringField(1)
+    mainEmail       = messages.StringField(2)
+    teeShirtSize    = messages.EnumField('TeeShirtSize', 3)
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
     sessionWishlist = messages.StringField(5, repeated=True)
 
@@ -85,6 +85,7 @@ class Conference(ndb.Model):
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
     sessions        = ndb.StringProperty(repeated=True)
+    speakers        = ndb.StructuredProperty(SpeakerLink, repeated=True)
 
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
@@ -101,6 +102,7 @@ class ConferenceForm(messages.Message):
     websafeKey      = messages.StringField(11)
     organizerDisplayName = messages.StringField(12)
     sessions        = messages.StringField(13, repeated=True)
+    speakers        = messages.StringField(14, repeated=True)
 
 class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
@@ -166,16 +168,6 @@ class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(SessionForm, 1, repeated=True)
 
-SESS_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    speaker=messages.StringField(1)
-    )
-SESS_BY_TYPE_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeConferenceKey=messages.StringField(1),
-    typeOfSession=messages.StringField(2)
-    )
-
 
 ###############################################################################
 #
@@ -208,11 +200,6 @@ class ConferenceSessionWishlistRequest(messages.Message):
     websafeConferenceKey = messages.StringField(1)
 
 
-SESS_WISH_STORE_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeSessionKey=messages.StringField(1)
-    )
-
 ###############################################################################
 #
 # Speaker object
@@ -227,6 +214,12 @@ class Speaker(ndb.Model):
     # def sessions(self):
     #     return Session.query(self.key.urlsafe().IN(Session.speakers))
 
+class SpeakerRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    name        = messages.StringField(1)
+    description = messages.StringField(2)
+    sessions    = messages.StringField(3, repeated=True)
+
 class SpeakerResponse(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     name        = messages.StringField(1)
@@ -236,38 +229,3 @@ class SpeakerResponse(messages.Message):
 class SpeakerListResponse(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""
     items = messages.MessageField(SpeakerResponse, 1, repeated=True)
-
-CONF_SPEAK_INDEX_REQ = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeConferenceKey=messages.StringField(1)
-    )
-
-CONF_SPEAK_STORE_REQ = endpoints.ResourceContainer(
-    SpeakerResponse,
-    websafeConferenceKey=messages.StringField(1)
-    )
-
-CONF_SPEAK_SHOW_REQ = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeSpeakerKey=messages.StringField(1)
-    )
-
-CONF_SPEAK_UPDATE_REQ = endpoints.ResourceContainer(
-    SpeakerResponse,
-    websafeSpeakerKey=messages.StringField(1)
-    )
-
-CONF_SPEAK_DELETE_REQ = CONF_SPEAK_SHOW_REQ
-
-###############################################################################
-#
-# Session Speaker
-#
-
-SESS_SPEAK_STORE_REQ = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeSessionKey=messages.StringField(1),
-    websafeSpeakerKey=messages.StringField(2)
-    )
-
-SESS_SPEAK_DELETE_REQ = SESS_SPEAK_STORE_REQ
