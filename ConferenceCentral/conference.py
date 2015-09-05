@@ -38,6 +38,7 @@ from models import ConferenceForms
 from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import Session
+from models import SessionLink
 from models import SessionForm
 from models import SessionForms
 from models import SessionType
@@ -48,6 +49,16 @@ from models import SESS_BY_SPEAKER_REQUEST
 from models import SESS_BY_TYPE_REQUEST
 from models import ConferenceSessionWishlistRequest
 from models import SESS_WISH_STORE_REQUEST
+from models import Speaker
+from models import SpeakerResponse
+from models import SpeakerListResponse
+from models import CONF_SPEAK_INDEX_REQ
+from models import CONF_SPEAK_STORE_REQ
+from models import CONF_SPEAK_SHOW_REQ
+from models import CONF_SPEAK_UPDATE_REQ
+from models import CONF_SPEAK_DELETE_REQ
+from models import SESS_SPEAK_STORE_REQ
+from models import SESS_SPEAK_DELETE_REQ
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -132,6 +143,61 @@ class ConferenceApi(remote.Service):
     """Conference API v0.1"""
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
+
+    def _getUser(self):
+        """Get the current user"""
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        return user
+
+    def _getConference(self, websafeKey=None):
+        """Get conference object for the given websafeKey"""
+        try:
+            a_conference = ndb.Key(urlsafe=websafeKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input conference key string: [%s]' % websafeKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No conference found with key: [%s]' % websafeKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        return a_conference
+
+    def _getSession(self, websafeKey=None):
+        """Get conference object for the given websafeKey"""
+        try:
+            a_session = ndb.Key(urlsafe=websafeKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input session key string: [%s]' % websafeKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No session found with key: [%s]' % websafeKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        # TODO: check object kind
+        # print "a_session kind: [%s]" % a_session._get_kind()
+
+        return a_session
+
+    def _getSpeaker(self, websafeKey=None):
+        """Get conference object for the given websafeKey"""
+        try:
+            a_speaker = ndb.Key(urlsafe=websafeKey).get()
+        except (TypeError) as e:
+            raise endpoints.NotFoundException(
+                'Invalid input speaker key string: [%s]' % websafeKey)
+        except (ProtocolBufferDecodeError) as e:
+            raise endpoints.NotFoundException(
+                'No speaker found with key: [%s]' % websafeKey)
+        except Exception as e:
+            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+
+        return a_speaker
 
     def _copyConferenceToForm(self, conf, displayName):
         """Copy relevant fields from Conference to ConferenceForm."""
@@ -608,17 +674,7 @@ class ConferenceApi(remote.Service):
 
     def _listSessionObjects(self, request):
         """List session objects, return SessionForms"""
-        try:
-            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference found with key: [%s]' % request.websafeConferenceKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
-
+        a_conference = self._getConference()
         session_list = []
         if hasattr(a_conference, 'sessions'):
             session_keys = [ndb.Key(urlsafe=wsck) for wsck in a_conference.sessions]
@@ -632,21 +688,8 @@ class ConferenceApi(remote.Service):
     def _storeSessionObject(self, request):
         """Create conference session object, return SessionForm/request."""
 
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
-
-        # check for valid conference
-        try:
-            a_conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference key string: [%s]' % request.websafeConferenceKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference found with key: [%s]' % request.websafeConferenceKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+        user = self._getUser()
+        a_conference = self._getConference()
 
         # check for session name
         if not request.name:
@@ -934,7 +977,7 @@ class ConferenceApi(remote.Service):
     def _getSessionsInWishlist(self, request):
         """List user wishlist session objects, return SessionForms"""
         profile = self._getProfileFromUser()
-        session_key_list = [ndb.Key(urlsafe=websafeKey) for websafeKey in profile.sessionWishlist]
+        session_key_list = [ndb.Key(urlsafe=session.websafeKey) for session in profile.sessionWishlist]
         wsck = getattr(request, 'websafeConferenceKey')
 
         if wsck:
@@ -958,40 +1001,57 @@ class ConferenceApi(remote.Service):
 
         return SessionForms(items=[self._copySessionToForm(session) for session in session_list])
 
+
     def _addSessionToWishlist(self, request):
         """Add session to user wishlist"""
         # get user profile
         profile = self._getProfileFromUser()
         # validate Key
-        try:
-            a_session_key = request.websafeSessionKey
-            a_conference_session= ndb.Key(urlsafe=a_session_key).get()
-        except (TypeError) as e:
-            raise endpoints.NotFoundException(
-                'Invalid input conference session key string: [%s]' % request.websafeSessionKey)
-        except (ProtocolBufferDecodeError) as e:
-            raise endpoints.NotFoundException(
-                'No conference session found with key: [%s]' % request.websafeSessionKey)
-        except Exception as e:
-            raise endpoints.NotFoundException('%s: %s' % (e.__class__.__name__, e))
+        a_session = self._getSession(request.websafeSessionKey)
 
-        if a_session_key in profile.sessionWishlist:
+        a_session_link = SessionLink(
+            name=a_session.name,
+            websafeKey=a_session.key.urlsafe()
+            )
+
+        if a_session_link in profile.sessionWishlist:
             raise ConflictException(
                 "Session already in wishlist")
 
-        profile.sessionWishlist.append(a_session_key)
+        profile.sessionWishlist.append(a_session_link)
         profile.put()
+        return BooleanMessage(data=True)
 
+
+    def _removeSessionFromWishlist(self, request):
+        """remove session from user wishlist"""
+        # get user profile
+        profile = self._getProfileFromUser()
+        # validate Key
+        a_session = self._getSession(request.websafeSessionKey)
+
+        a_session_link = SessionLink(
+            name=a_session.name,
+            websafeKey=a_session.key.urlsafe()
+            )
+
+        if a_session_link not in profile.sessionWishlist:
+            raise ConflictException(
+                "Session not in wishlist")
+
+        profile.sessionWishlist.remove(a_session_link)
+        profile.put()
         return BooleanMessage(data=True)
 
 
     @endpoints.method(ConferenceSessionWishlistRequest, SessionForms,
         path='conference/session/wishlist',
-        http_method='post',
+        http_method='POST',
         name='getSessionsInWishlist')
     def getSessionsInWishlist(self, request):
         """Get list of sessions in user wishlist"""
         return self._getSessionsInWishlist(request)
+
 
     @endpoints.method(SESS_WISH_STORE_REQUEST, BooleanMessage,
         path='conference/session/{websafeSessionKey}/wishlist',
@@ -1001,5 +1061,139 @@ class ConferenceApi(remote.Service):
         """Add given session to user wishlist"""
         return self._addSessionToWishlist(request)
 
+    @endpoints.method(SESS_WISH_STORE_REQUEST, BooleanMessage,
+        path='conference/session/{websafeSessionKey}/wishlist',
+        http_method='DELETE',
+        name='removeSessionFromWishlist')
+    def removeSessionFromWishlist(self, request):
+        """Add given session to user wishlist"""
+        return self._removeSessionFromWishlist(request)
+
+# - - - Speaker - - - - - - - - - - - - - - - - - - - -
+
+    def _copyConferenceSpeakerToForm(self, a_speaker):
+        """Copy relevant fields from Speaker to SpeakerResponse"""
+        a_form = SpeakerResponse()
+        for field in a_form.all_fields():
+            if hasattr(a_speaker, field.name):
+                setattr(a_form, field.name, getattr(a_speaker, field.name))
+            elif field.name == "websafeKey":
+                setattr(a_form, field.name, a_speaker.key.urlsafe())
+        a_form.check_initialized()
+        return a_form
+
+    def _listConferenceSpeakers(self, request):
+        """List conference speaker objects, return SpeakerListResponse"""
+        a_conference = self._getConference(request.websafeConferenceKey)
+
+        session_key_list = [ndb.Key(urlsafe=websafeKey) for websafeKey in a_conference.sessions]
+        session_list = ndb.get_multi(session_key_list)
+        speaker_set = set()
+        for session in session_list:
+            speaker_set.update(session.speakers)
+        print "speaker set %s" % speaker_set
+        speaker_list = []
+        if len(speaker_set):
+            speaker_list = Speaker.query(Speaker.name.IN(list(speaker_set))).fetch()
+        print "speaker list %s" % speaker_list
+        return SpeakerListResponse(
+            items=[self._copyConferenceSpeakerToForm(speaker) for speaker in speaker_list])
+
+    def _storeConferenceSpeaker(self, request):
+        """Create a conference speaker profile, return SpeakerResponse"""
+        conference = self._getConference(request.websafeConferenceKey)
+        user = self._getUser()
+
+        if not request.name:
+            raise endpoints.BadRequestException(
+                "Speaker 'name' field' required")
+
+        data = {
+            field.name: getattr(request, field.name)
+            for field
+            in request.all_fields()
+            }
+
+        del data['websafeConferenceKey']
+
+        speaker = Speaker(**data)
+        speaker.put()
+        return self._copyConferenceSpeakerToForm(speaker)
+
+    def _showConferenceSpeaker(self, request):
+        """Show speaker object, return SpeakerResponse"""
+        pass
+
+
+    def _updateConferenceSpeaker(self, request):
+        """Update speaker object, return SpeakerResponse"""
+        pass
+
+
+    def _destroyConferenceSpeaker(self, request):
+        """Destroy speaker object, return SpeakerResponse"""
+        pass
+
+
+    @endpoints.method(CONF_SPEAK_INDEX_REQ, SpeakerListResponse,
+        path='conference/{websafeConferenceKey}/speaker',
+        http_method='GET',
+        name='listConferenceSpeakers')
+    def listConferenceSpeakers(self, request):
+        """Get list of speakers for the given conference"""
+        return self._listConferenceSpeakers(request)
+
+
+    @endpoints.method(CONF_SPEAK_STORE_REQ, SpeakerResponse,
+        path='conference/{websafeConferenceKey}/speaker',
+        http_method='POST',
+        name='createConferenceSpeaker')
+    def createConferenceSpeaker(self, request):
+        """Create a speaker profile"""
+        return self._storeConferenceSpeaker(request)
+
+
+    @endpoints.method(CONF_SPEAK_SHOW_REQ, SpeakerResponse,
+        path='conference/speaker/{websafeSpeakerKey}',
+        http_method='GET',
+        name='showConferenceSpeaker')
+    def showConferenceSpeaker(self, request):
+        """Retrieve a speaker profile"""
+        return self._showConferenceSpeaker(request)
+
+
+    @endpoints.method(CONF_SPEAK_UPDATE_REQ, SpeakerResponse,
+        path='conference/speaker/{websafeSpeakerKey}',
+        http_method='PUT',
+        name='updateConferenceSpeaker')
+    def updateConferenceSpeaker(self, request):
+        """Update a speaker profile"""
+        return self._updateConferenceSpeaker(request)
+
+
+    @endpoints.method(CONF_SPEAK_DELETE_REQ, SpeakerResponse,
+        path='conference/speaker/{websafeSpeakerKey}',
+        http_method='DELETE',
+        name='destroyConferenceSpeaker')
+    def destroyConferenceSpeaker(self, request):
+        """Remove a speaker profile"""
+        return self._destroyConferenceSpeaker(request)
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    @endpoints.method(SESS_SPEAK_STORE_REQ, BooleanMessage,
+        path='session/speaker',
+        http_method='POST',
+        name='addSessionSpeaker')
+    def addSessionSpeaker(self, reqeust):
+        pass
+
+    @endpoints.method(SESS_SPEAK_DELETE_REQ, BooleanMessage,
+        path='session/speaker',
+        http_method='DELETE',
+        name='removeSessionSpeaker')
+    def removeSessionSpeaker(self, reqeust):
+        pass
 
 api = endpoints.api_server([ConferenceApi]) # register API
