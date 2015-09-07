@@ -214,6 +214,10 @@ class Speaker(ndb.Model):
     # def sessions(self):
     #     return Session.query(self.key.urlsafe().IN(Session.speakers))
 
+    # on update speaker
+    # update conferences containing this speaker
+    # update sessions containining this speaker
+
 class SpeakerRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
     name        = messages.StringField(1)
