@@ -222,13 +222,12 @@ class SpeakerRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
     name        = messages.StringField(1)
     description = messages.StringField(2)
-    sessions    = messages.StringField(3, repeated=True)
 
 class SpeakerResponse(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     name        = messages.StringField(1)
     description = messages.StringField(2)
-    sessions    = messages.StringField(3, repeated=True)
+    websafeKey = messages.StringField(3)
 
 class SpeakerListResponse(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""

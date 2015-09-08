@@ -944,6 +944,7 @@ class ConferenceApi(remote.Service):
         """Destroy conference session type"""
         return self._destroySessionTypeObject(request)
 
+
     def _getConferenceSessionsByType(self, request):
         """Get list of sessions by type for the given conference"""
         a_conference = self._getConference(request.websafeConferenceKey)
@@ -961,20 +962,6 @@ class ConferenceApi(remote.Service):
     def getConferenceSessionsByType(self, request):
         """Get list of conference sessions by speaker"""
         return self._getConferenceSessionsByType(request)
-
-    def _getSessionsBySpeaker(self, request):
-        a_speaker = request.speaker
-        session_list = Session.query(Session.speakers==a_speaker)
-        return SessionForms(
-            items=[self._copySessionToForm(session) for session in session_list])
-
-    @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
-        path='conference/session/speaker/{speaker}',
-        http_method='GET',
-        name='getSessionsBySpeaker')
-    def getSessionsBySpeaker(self, request):
-        """Get list of sessions by speaker across all conferences"""
-        return self._getSessionsBySpeaker(request)
 
 
 # - - - Session wishlist - - - - - - - - - - - - - - - - - - - -
@@ -1076,6 +1063,23 @@ class ConferenceApi(remote.Service):
                 setattr(a_form, field.name, a_speaker.key.urlsafe())
         a_form.check_initialized()
         return a_form
+
+
+    def _listSpeakers(self, request):
+        """get list of speakers"""
+        speaker_list = Speaker.query().fetch()
+        return SpeakerListResponse(
+            items=[self._copyConferenceSpeakerToForm(speaker) for speaker in speaker_list])
+
+
+    @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
+        path='conference/speaker',
+        http_method='GET',
+        name='listSpeakers')
+    def listSpeakers(self, request):
+        """Get list of speakers"""
+        return self._listSpeakers(request)
+
 
     def _listConferenceSpeakers(self, request):
         """List conference speaker objects, return SpeakerListResponse"""
@@ -1179,18 +1183,45 @@ class ConferenceApi(remote.Service):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    def _addSessionSpeaker(self, request):
+        """Add a session and speaker object relationship"""
+        speaker_key = ndb.Key(urlsafe=request.websafeSpeakerKey)
+        session_key = ndb.Key(urlsafe=request.websafeSessionKey)
+
+        objects = ndb.get_multi([speaker_key, session_key])
+        print objects
+        return BooleanMessage(data=True)
+
     @endpoints.method(SESS_SPEAK_STORE_REQ, BooleanMessage,
         path='session/speaker',
         http_method='POST',
         name='addSessionSpeaker')
-    def addSessionSpeaker(self, reqeust):
-        pass
+    def addSessionSpeaker(self, request):
+        """Add session speaker relationship"""
+        return self._addSessionSpeaker(request)
 
     @endpoints.method(SESS_SPEAK_DELETE_REQ, BooleanMessage,
         path='session/speaker',
         http_method='DELETE',
         name='removeSessionSpeaker')
-    def removeSessionSpeaker(self, reqeust):
+    def removeSessionSpeaker(self, request):
         pass
+
+
+    def _getSessionsBySpeaker(self, request):
+        a_speaker = request.speaker
+        session_list = Session.query(Session.speakers==a_speaker)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in session_list])
+
+
+    @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
+        path='conference/session/speaker/{speaker}',
+        http_method='GET',
+        name='getSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """Get list of sessions by speaker across all conferences"""
+        return self._getSessionsBySpeaker(request)
+
 
 api = endpoints.api_server([ConferenceApi]) # register API
