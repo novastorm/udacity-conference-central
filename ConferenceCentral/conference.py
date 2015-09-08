@@ -1053,7 +1053,7 @@ class ConferenceApi(remote.Service):
 
 # - - - Speaker - - - - - - - - - - - - - - - - - - - -
 
-    def _copyConferenceSpeakerToForm(self, a_speaker):
+    def _copySpeakerToForm(self, a_speaker):
         """Copy relevant fields from Speaker to SpeakerResponse"""
         a_form = SpeakerResponse()
         for field in a_form.all_fields():
@@ -1069,7 +1069,7 @@ class ConferenceApi(remote.Service):
         """get list of speakers"""
         speaker_list = Speaker.query().fetch()
         return SpeakerListResponse(
-            items=[self._copyConferenceSpeakerToForm(speaker) for speaker in speaker_list])
+            items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
 
 
     @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
@@ -1097,7 +1097,7 @@ class ConferenceApi(remote.Service):
             speaker_list = Speaker.query(Speaker.name.IN(list(speaker_set))).fetch()
         print "speaker list %s" % speaker_list
         return SpeakerListResponse(
-            items=[self._copyConferenceSpeakerToForm(speaker) for speaker in speaker_list])
+            items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
 
     def _storeConferenceSpeaker(self, request):
         """Create a conference speaker profile, return SpeakerResponse"""
@@ -1118,12 +1118,12 @@ class ConferenceApi(remote.Service):
 
         a_speaker = Speaker(**data)
         a_speaker.put()
-        return self._copyConferenceSpeakerToForm(a_speaker)
+        return self._copySpeakerToForm(a_speaker)
 
     def _showConferenceSpeaker(self, request):
         """Show speaker object, return SpeakerResponse"""
         a_speaker = self._getSpeaker(request.websafeSpeakerKey)
-        return self._copyConferenceSpeakerToForm(a_speaker)
+        return self._copySpeakerToForm(a_speaker)
 
 
     def _updateConferenceSpeaker(self, request):
