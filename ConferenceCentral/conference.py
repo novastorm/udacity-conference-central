@@ -1065,7 +1065,7 @@ class ConferenceApi(remote.Service):
         return a_form
 
 
-    def _listSpeakers(self, request):
+    def _getSpeakers(self, request):
         """get list of speakers"""
         speaker_list = Speaker.query().fetch()
         return SpeakerListResponse(
@@ -1075,13 +1075,13 @@ class ConferenceApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
         path='conference/speaker',
         http_method='GET',
-        name='listSpeakers')
-    def listSpeakers(self, request):
+        name='getSpeakers')
+    def getSpeakers(self, request):
         """Get list of speakers"""
-        return self._listSpeakers(request)
+        return self._getSpeakers(request)
 
 
-    def _listConferenceSpeakers(self, request):
+    def _getConferenceSpeakers(self, request):
         """List conference speaker objects, return SpeakerListResponse"""
         a_conference = self._getConference(request.websafeConferenceKey)
 
@@ -1139,10 +1139,10 @@ class ConferenceApi(remote.Service):
     @endpoints.method(CONF_SPEAK_INDEX_REQ, SpeakerListResponse,
         path='conference/{websafeConferenceKey}/speaker',
         http_method='GET',
-        name='listConferenceSpeakers')
-    def listConferenceSpeakers(self, request):
+        name='getConferenceSpeakers')
+    def getConferenceSpeakers(self, request):
         """Get list of speakers for the given conference"""
-        return self._listConferenceSpeakers(request)
+        return self._getConferenceSpeakers(request)
 
 
     @endpoints.method(CONF_SPEAK_STORE_REQ, SpeakerResponse,
