@@ -786,6 +786,7 @@ class ConferenceApi(remote.Service):
         a_session.put()
         return self._copySessionToForm(a_session)
 
+
     @ndb.transactional()
     def _destroySessionObject(self, request):
         """destroy conference session object, return SessionForm"""
@@ -1043,6 +1044,7 @@ class ConferenceApi(remote.Service):
         """Add given session to user wishlist"""
         return self._addSessionToWishlist(request)
 
+
     @endpoints.method(SESS_WISH_DELETE_REQUEST, BooleanMessage,
         path='conference/session/{websafeSessionKey}/wishlist',
         http_method='DELETE',
@@ -1050,6 +1052,7 @@ class ConferenceApi(remote.Service):
     def removeSessionFromWishlist(self, request):
         """Add given session to user wishlist"""
         return self._removeSessionFromWishlist(request)
+
 
 # - - - Speaker - - - - - - - - - - - - - - - - - - - -
 
@@ -1099,6 +1102,7 @@ class ConferenceApi(remote.Service):
         return SpeakerListResponse(
             items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
 
+
     def _storeConferenceSpeaker(self, request):
         """Create a conference speaker profile, return SpeakerResponse"""
         a_conference = self._getConference(request.websafeConferenceKey)
@@ -1120,6 +1124,7 @@ class ConferenceApi(remote.Service):
         a_speaker.put()
         return self._copySpeakerToForm(a_speaker)
 
+
     def _showConferenceSpeaker(self, request):
         """Show speaker object, return SpeakerResponse"""
         a_speaker = self._getSpeaker(request.websafeSpeakerKey)
@@ -1128,12 +1133,30 @@ class ConferenceApi(remote.Service):
 
     def _updateConferenceSpeaker(self, request):
         """Update speaker object, return SpeakerResponse"""
-        pass
+        user = self._getUser()
+        speaker = self._getSpeaker(request.websafeSpeakerKey)
+        for field in request.all_fields():
+            data = getattr(request, field.name)
+            if data == "":
+                delattr(speaker, field.name)
+            elif data not in (None, []):
+                setattr(speaker, field.name, data)
+        speaker.put()
+        return self._copySpeakerToForm(speaker)
 
 
     def _destroyConferenceSpeaker(self, request):
         """Destroy speaker object, return SpeakerResponse"""
-        pass
+        user = self._getUser()
+        speaker = self._getSpeaker(request.websafeSpeakerKey)
+
+        # remove speaker only if session count is zero
+        print "speaker sessions: [%s]" % len(speaker.sessions)
+        if len(speaker.sessions > 0):
+            raise endpoints.BadRequestException(
+                "Sessions is not empty")
+        speaker.key.delete()
+        return self._copySpeakerToForm(speaker)
 
 
     @endpoints.method(CONF_SPEAK_INDEX_REQ, SpeakerListResponse,
@@ -1192,6 +1215,7 @@ class ConferenceApi(remote.Service):
         print objects
         return BooleanMessage(data=True)
 
+
     @endpoints.method(SESS_SPEAK_STORE_REQ, BooleanMessage,
         path='session/speaker',
         http_method='POST',
@@ -1199,6 +1223,7 @@ class ConferenceApi(remote.Service):
     def addSessionSpeaker(self, request):
         """Add session speaker relationship"""
         return self._addSessionSpeaker(request)
+
 
     @endpoints.method(SESS_SPEAK_DELETE_REQ, BooleanMessage,
         path='session/speaker',
