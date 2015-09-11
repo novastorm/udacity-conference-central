@@ -33,6 +33,7 @@ from models import ProfileForm
 from models import StringMessage
 from models import BooleanMessage
 from models import Conference
+from models import ConferenceLink
 from models import ConferenceForm
 from models import ConferenceForms
 from models import ConferenceQueryForm
@@ -47,6 +48,7 @@ from models import SessionTypeListResponse
 from models import TeeShirtSize
 from models import ConferenceSessionWishlistRequest
 from models import Speaker
+from models import SpeakerLink
 from models import SpeakerRequest
 from models import SpeakerResponse
 from models import SpeakerListResponse
@@ -702,6 +704,9 @@ class ConferenceApi(remote.Service):
             if hasattr(a_session, field.name):
                 if field.name == 'date' or field.name == 'startTime':
                     setattr(a_form, field.name, str(getattr(a_session, field.name)))
+                elif field.name == 'speakers':
+                    # TODO: process speaker link list with speaker form
+                    pass
                 else:
                     setattr(a_form, field.name, getattr(a_session, field.name))
             elif field.name == "websafeKey":
@@ -839,7 +844,7 @@ class ConferenceApi(remote.Service):
     def _listConferenceSessions(self, request):
         """List session objects, return SessionForms"""
         a_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-        session_list = Session.query(ancestor=a_conference_key)
+        session_list = Session.query(ancestor=a_conference_key).fetch()
 
         return SessionForms(
             items=[self._copySessionToForm(session) for session in session_list]
@@ -1138,6 +1143,10 @@ class ConferenceApi(remote.Service):
             elif data not in (None, []):
                 setattr(speaker, field.name, data)
         speaker.put()
+        # TODO: update areas with speakerLinks
+        # update conference speakers
+        # update session speakers
+        # update wishlists
         return self._copySpeakerToForm(speaker)
 
 
@@ -1202,13 +1211,41 @@ class ConferenceApi(remote.Service):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    @ndb.transactional(xg=True)
     def _addSessionSpeaker(self, request):
         """Add a session and speaker object relationship"""
         speaker_key = ndb.Key(urlsafe=request.websafeSpeakerKey)
         session_key = ndb.Key(urlsafe=request.websafeSessionKey)
 
-        objects = ndb.get_multi([speaker_key, session_key])
-        print objects
+        (session, speaker) = ndb.get_multi([session_key, speaker_key])
+
+        a_session_link = SessionLink(
+            name=session.name,
+            websafeKey=session.key.urlsafe()
+            )
+        a_speaker_link = SpeakerLink(
+            name=speaker.name,
+            websafeKey=speaker.key.urlsafe()
+            )
+
+        if ((a_speaker_link in session.speakers) and
+            (a_session_link in speaker.sessions)):
+            raise endpoints.BadRequestException(
+                "session speaker exists")
+
+        if (((a_speaker_link in session.speakers) and
+             (a_session_link not in speaker.sessions)) or
+            ((a_speaker_link not in session.speakers) and
+             (a_session_link in speaker.sessions))):
+            raise endpoints.BadRequestException(
+                "consistency error - report to admin")
+
+        session.speakers.append(a_speaker_link)
+        speaker.sessions.append(a_session_link)
+
+        session.put()
+        speaker.put()
+
         return BooleanMessage(data=True)
 
 

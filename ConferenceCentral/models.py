@@ -43,6 +43,11 @@ class SpeakerLink(ndb.Model):
     numberOfSessions = ndb.IntegerProperty()
     websafeKey = ndb.StringProperty()
 
+class SpeakerLinkForm(messages.Message):
+    name       = messages.StringField(1)
+    numberOfSessions = messages.IntegerField(2)
+    websafeKey = messages.StringField(3)
+
 class Profile(ndb.Model):
     """Profile -- User profile object"""
     displayName     = ndb.StringProperty()
@@ -162,7 +167,7 @@ class SessionForm(messages.Message):
     date          = messages.StringField(5) # DateField YYYY-MM-DD
     startTime     = messages.StringField(6) # TimeField HH:MM
     websafeKey    = messages.StringField(7)
-    speakers      = messages.StringField(8, repeated=True)
+    speakers      = messages.MessageField(SpeakerLinkForm, 8, repeated=True)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
