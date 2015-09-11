@@ -752,6 +752,12 @@ class ConferenceApi(remote.Service):
         return self._copySessionToForm(a_session)
 
 
+    def _showSessionObject(self, request):
+        """Retrieve conference session object, return SessionForm"""
+        a_session = self._getSession(request.websafeSessionKey)
+        return self._copySessionToForm(a_session)
+
+
     def _updateSessionObject(self, request):
         """Update conference session object, return SessionFrom"""
 
@@ -801,6 +807,15 @@ class ConferenceApi(remote.Service):
     def createSession(self, request):
         """Create conference session"""
         return self._storeSessionObject(request)
+
+
+    @endpoints.method(CONF_SESS_SHOW_REQUEST, SessionForm,
+        path='conference/session/{websafeSessionKey}',
+        http_method='GET',
+        name='showSession')
+    def showSession(self, request):
+        """Show conference session"""
+        return self._showSessionObject(request)
 
 
     @endpoints.method(CONF_SESS_UPDATE_REQUEST, SessionForm,
