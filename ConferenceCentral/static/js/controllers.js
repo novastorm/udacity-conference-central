@@ -738,10 +738,16 @@ conferenceApp.controllers.controller('RootCtrl', function ($scope, $location, oa
         gapi.signin.render('signInButton', {
             'callback': function () {
                 jQuery('#signInButton button').attr('disabled', 'true').css('cursor', 'default');
-                if (gapi.auth.getToken() && gapi.auth.getToken().access_token) {
+                if (gapi.auth.getToken() && gapi.auth.getToken().access_token ) {
                     $scope.$apply(function () {
                         oauth2Provider.signedIn = true;
                     });
+                }
+                else {
+                    $scope.$apply(function () {
+                        oauth2Provider.signedIn = false;
+                    });
+
                 }
             },
             'clientid': oauth2Provider.CLIENT_ID,

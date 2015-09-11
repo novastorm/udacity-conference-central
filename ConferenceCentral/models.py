@@ -214,18 +214,23 @@ class Speaker(ndb.Model):
     # def sessions(self):
     #     return Session.query(self.key.urlsafe().IN(Session.speakers))
 
+    # on update speaker
+    # update conferences containing this speaker
+    # update sessions containining this speaker
+
 class SpeakerRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
-    name        = messages.StringField(1)
-    description = messages.StringField(2)
-    sessions    = messages.StringField(3, repeated=True)
+    websafeConferenceKey = messages.StringField(1)
+    name        = messages.StringField(2)
+    description = messages.StringField(3)
 
 class SpeakerResponse(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     name        = messages.StringField(1)
     description = messages.StringField(2)
-    sessions    = messages.StringField(3, repeated=True)
+    websafeKey = messages.StringField(3)
 
 class SpeakerListResponse(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""
     items = messages.MessageField(SpeakerResponse, 1, repeated=True)
+
