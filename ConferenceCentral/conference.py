@@ -332,7 +332,9 @@ class ConferenceApi(remote.Service):
         for field in request.all_fields():
             data = getattr(request, field.name)
             # only copy fields where we get data
-            if data not in (None, []):
+            if data in ("", []):
+                delattr(conf, field.name)
+            elif data not in (None, []):
                 # special handling for dates (convert string to Date)
                 if field.name in ('startDate', 'endDate'):
                     data = datetime.strptime(data, "%Y-%m-%d").date()
