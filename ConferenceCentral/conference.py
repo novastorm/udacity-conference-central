@@ -1068,42 +1068,49 @@ class ConferenceApi(remote.Service):
         return a_form
 
 
+    # def _getSpeakers(self, request):
+    #     """get list of speakers"""
+    #     speaker_list = Speaker.query().fetch()
+    #     return SpeakerListResponse(
+    #         items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
+
+
+    # @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
+    #     path='conference/speaker',
+    #     http_method='GET',
+    #     name='getSpeakers')
+    # def getSpeakers(self, request):
+    #     """Get list of speakers"""
+    #     return self._getSpeakers(request)
+
+
     def _getSpeakers(self, request):
-        """get list of speakers"""
-        speaker_list = Speaker.query().fetch()
-        return SpeakerListResponse(
-            items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
-
-
-    @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
-        path='conference/speaker',
-        http_method='GET',
-        name='getSpeakers')
-    def getSpeakers(self, request):
-        """Get list of speakers"""
-        return self._getSpeakers(request)
-
-
-    def _getConferenceSpeakers(self, request):
         """List conference speaker objects, return SpeakerListResponse"""
-        a_conference = self._getConference(request.websafeConferenceKey)
+        conference_key = request.websafeConferenceKey
+        # a_conference = self._getConference(request.websafeConferenceKey)
 
-        # TODO: find a way to reduce 3 gets
-        session_key_list = [ndb.Key(urlsafe=websafeKey) for websafeKey in a_conference.sessions]
-        session_list = ndb.get_multi(session_key_list)
-        speaker_set = set()
-        for session in session_list:
-            speaker_set.update(session.speakers)
-        print "speaker set %s" % speaker_set
-        speaker_list = []
-        if len(speaker_set):
-            speaker_list = Speaker.query(Speaker.name.IN(list(speaker_set))).fetch()
-        print "speaker list %s" % speaker_list
+        if conference_key:
+            a_conference = self._getConference(request.websafeConferenceKey)
+
+            # TODO: find a way to reduce 3 gets
+            session_key_list = [ndb.Key(urlsafe=websafeKey) for websafeKey in a_conference.sessions]
+            session_list = ndb.get_multi(session_key_list)
+            speaker_set = set()
+            for session in session_list:
+                speaker_set.update(session.speakers)
+            print "speaker set %s" % speaker_set
+            speaker_list = []
+            if len(speaker_set):
+                speaker_list = Speaker.query(Speaker.name.IN(list(speaker_set))).fetch()
+            print "speaker list %s" % speaker_list
+        else:
+            speaker_list = Speaker.query().fetch()
+
         return SpeakerListResponse(
             items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
 
 
-    def _storeConferenceSpeaker(self, request):
+    def _storeSpeaker(self, request):
         """Create a conference speaker profile, return SpeakerResponse"""
         a_conference = self._getConference(request.websafeConferenceKey)
         a_user = self._getUser()
@@ -1125,13 +1132,13 @@ class ConferenceApi(remote.Service):
         return self._copySpeakerToForm(a_speaker)
 
 
-    def _showConferenceSpeaker(self, request):
+    def _showSpeaker(self, request):
         """Show speaker object, return SpeakerResponse"""
         a_speaker = self._getSpeaker(request.websafeSpeakerKey)
         return self._copySpeakerToForm(a_speaker)
 
 
-    def _updateConferenceSpeaker(self, request):
+    def _updateSpeaker(self, request):
         """Update speaker object, return SpeakerResponse"""
         user = self._getUser()
         speaker = self._getSpeaker(request.websafeSpeakerKey)
@@ -1145,63 +1152,63 @@ class ConferenceApi(remote.Service):
         return self._copySpeakerToForm(speaker)
 
 
-    def _destroyConferenceSpeaker(self, request):
+    def _destroySpeaker(self, request):
         """Destroy speaker object, return SpeakerResponse"""
         user = self._getUser()
         speaker = self._getSpeaker(request.websafeSpeakerKey)
 
         # remove speaker only if session count is zero
         print "speaker sessions: [%s]" % len(speaker.sessions)
-        if len(speaker.sessions > 0):
+        if len(speaker.sessions) > 0:
             raise endpoints.BadRequestException(
                 "Sessions is not empty")
         speaker.key.delete()
         return self._copySpeakerToForm(speaker)
 
 
-    @endpoints.method(CONF_SPEAK_INDEX_REQ, SpeakerListResponse,
-        path='conference/{websafeConferenceKey}/speaker',
+    @endpoints.method(SpeakerRequest, SpeakerListResponse,
+        path='speaker',
         http_method='GET',
-        name='getConferenceSpeakers')
-    def getConferenceSpeakers(self, request):
+        name='getSpeakers')
+    def getSpeakers(self, request):
         """Get list of speakers for the given conference"""
-        return self._getConferenceSpeakers(request)
+        return self._getSpeakers(request)
 
 
     @endpoints.method(CONF_SPEAK_STORE_REQ, SpeakerResponse,
-        path='conference/{websafeConferenceKey}/speaker',
+        path='speaker',
         http_method='POST',
-        name='createConferenceSpeaker')
-    def createConferenceSpeaker(self, request):
+        name='createSpeaker')
+    def createSpeaker(self, request):
         """Create a speaker profile"""
-        return self._storeConferenceSpeaker(request)
+        return self._storeSpeaker(request)
 
 
     @endpoints.method(CONF_SPEAK_SHOW_REQ, SpeakerResponse,
-        path='conference/speaker/{websafeSpeakerKey}',
+        path='speaker/{websafeSpeakerKey}',
         http_method='GET',
-        name='showConferenceSpeaker')
-    def showConferenceSpeaker(self, request):
+        name='showSpeaker')
+    def showSpeaker(self, request):
         """Retrieve a speaker profile"""
-        return self._showConferenceSpeaker(request)
+        return self._showSpeaker(request)
 
 
     @endpoints.method(CONF_SPEAK_UPDATE_REQ, SpeakerResponse,
-        path='conference/speaker/{websafeSpeakerKey}',
+        path='speaker/{websafeSpeakerKey}',
         http_method='PUT',
-        name='updateConferenceSpeaker')
-    def updateConferenceSpeaker(self, request):
+        name='updateSpeaker')
+    def updateSpeaker(self, request):
         """Update a speaker profile"""
-        return self._updateConferenceSpeaker(request)
+        return self._updateSpeaker(request)
 
 
     @endpoints.method(CONF_SPEAK_DELETE_REQ, SpeakerResponse,
-        path='conference/speaker/{websafeSpeakerKey}',
+        path='speaker/{websafeSpeakerKey}',
         http_method='DELETE',
-        name='destroyConferenceSpeaker')
-    def destroyConferenceSpeaker(self, request):
+        name='destroySpeaker')
+    def destroySpeaker(self, request):
         """Remove a speaker profile"""
-        return self._destroyConferenceSpeaker(request)
+        return self._destroySpeaker(request)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

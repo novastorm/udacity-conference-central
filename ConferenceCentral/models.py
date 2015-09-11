@@ -220,8 +220,9 @@ class Speaker(ndb.Model):
 
 class SpeakerRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
-    name        = messages.StringField(1)
-    description = messages.StringField(2)
+    websafeConferenceKey = messages.StringField(1)
+    name        = messages.StringField(2)
+    description = messages.StringField(3)
 
 class SpeakerResponse(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
