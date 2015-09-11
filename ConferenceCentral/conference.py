@@ -123,16 +123,6 @@ SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
 SESS_TYPE_POST_REQUEST = SESS_TYPE_GET_REQUEST
 
 
-CONF_SPEAK_INDEX_REQ = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    websafeConferenceKey=messages.StringField(1)
-    )
-
-CONF_SPEAK_STORE_REQ = endpoints.ResourceContainer(
-    SpeakerRequest,
-    websafeConferenceKey=messages.StringField(1)
-    )
-
 CONF_SPEAK_SHOW_REQ = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSpeakerKey=messages.StringField(1)
@@ -1068,26 +1058,9 @@ class ConferenceApi(remote.Service):
         return a_form
 
 
-    # def _getSpeakers(self, request):
-    #     """get list of speakers"""
-    #     speaker_list = Speaker.query().fetch()
-    #     return SpeakerListResponse(
-    #         items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
-
-
-    # @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
-    #     path='conference/speaker',
-    #     http_method='GET',
-    #     name='getSpeakers')
-    # def getSpeakers(self, request):
-    #     """Get list of speakers"""
-    #     return self._getSpeakers(request)
-
-
     def _getSpeakers(self, request):
-        """List conference speaker objects, return SpeakerListResponse"""
+        """List speaker objects, return SpeakerListResponse"""
         conference_key = request.websafeConferenceKey
-        # a_conference = self._getConference(request.websafeConferenceKey)
 
         if conference_key:
             a_conference = self._getConference(request.websafeConferenceKey)
@@ -1111,8 +1084,7 @@ class ConferenceApi(remote.Service):
 
 
     def _storeSpeaker(self, request):
-        """Create a conference speaker profile, return SpeakerResponse"""
-        a_conference = self._getConference(request.websafeConferenceKey)
+        """Create a speaker object, return SpeakerResponse"""
         a_user = self._getUser()
 
         if not request.name:
@@ -1175,7 +1147,7 @@ class ConferenceApi(remote.Service):
         return self._getSpeakers(request)
 
 
-    @endpoints.method(CONF_SPEAK_STORE_REQ, SpeakerResponse,
+    @endpoints.method(SpeakerRequest, SpeakerResponse,
         path='speaker',
         http_method='POST',
         name='createSpeaker')

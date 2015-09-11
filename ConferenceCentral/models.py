@@ -233,3 +233,4 @@ class SpeakerResponse(messages.Message):
 class SpeakerListResponse(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""
     items = messages.MessageField(SpeakerResponse, 1, repeated=True)
+
