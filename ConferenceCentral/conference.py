@@ -658,8 +658,6 @@ class ConferenceApi(remote.Service):
 
         # write things back to the datastore & return
         ndb.put_multi([prof, conf])
-        # prof.put()
-        # conf.put()
         return BooleanMessage(data=retval)
 
 
@@ -1283,8 +1281,6 @@ class ConferenceApi(remote.Service):
         speaker.sessions.append(a_session_link)
 
         ndb.put_multi([session, speaker])
-        # session.put()
-        # speaker.put()
 
         return BooleanMessage(data=True)
 
@@ -1322,8 +1318,6 @@ class ConferenceApi(remote.Service):
         speaker.sessions.remove(a_session_link)
 
         ndb.put_multi([session, speaker])
-        # session.put()
-        # speaker.put()
 
         return BooleanMessage(data=True)
 
