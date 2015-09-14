@@ -55,7 +55,7 @@ from models import SpeakerRequest
 from models import SpeakerResponse
 from models import SpeakerListResponse
 from models import SpeakerQueryRequest
-from models import SessionSpeakerRequest
+from models import SpeakerSessionsRequest
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -1353,7 +1353,7 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in session_list])
 
 
-    @endpoints.method(SessionSpeakerRequest, SessionForms,
+    @endpoints.method(SpeakerSessionsRequest, SessionForms,
         path='session/speakers',
         http_method='GET',
         name='getSessionsBySpeaker')

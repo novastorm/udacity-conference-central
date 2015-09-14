@@ -255,7 +255,7 @@ class SpeakerQueryRequest(messages.Message):
     websafeConferenceKey = messages.StringField(1)
 
 
-class SessionSpeakerRequest(messages.Message):
+class SpeakerSessionsRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
     websafeSpeakerKey = messages.StringField(1)
     name        = messages.StringField(2)
