@@ -44,6 +44,7 @@ from models import SessionLinkResponse
 from models import SessionForm
 from models import SessionForms
 from models import SessionType
+from models import SessionTypeRequest
 from models import SessionTypeResponse
 from models import SessionTypeListResponse
 from models import TeeShirtSize
@@ -971,7 +972,7 @@ class ConferenceApi(remote.Service):
         return self._listSessionTypeObjects(request)
 
 
-    @endpoints.method(SessionTypeResponse, SessionTypeResponse,
+    @endpoints.method(SessionTypeRequest, SessionTypeResponse,
         path='conference/session/type',
         http_method='POST',
         name='createSessionType')

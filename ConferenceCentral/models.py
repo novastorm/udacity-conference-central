@@ -190,6 +190,10 @@ class SessionType(ndb.Model):
     """SessionType -- Session type list"""
     label = ndb.StringProperty()
 
+class SessionTypeRequest(messages.Message):
+    """SessionTypeResponse -- Session type response form"""
+    label      = messages.StringField(1)
+
 class SessionTypeResponse(messages.Message):
     """SessionTypeResponse -- Session type response form"""
     label      = messages.StringField(1)
