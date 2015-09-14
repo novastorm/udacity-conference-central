@@ -1118,22 +1118,7 @@ class ConferenceApi(remote.Service):
 
     def _getSpeakers(self, request):
         """List speaker objects, return SpeakerListResponse"""
-        ws_conference_key = request.websafeConferenceKey
-
-        if ws_conference_key:
-            a_conference = self._getConference(ws_conference_key)
-
-            session_list = Session.query(ancestor=a_conference.key).fetch()
-            speaker_set = set()
-            for session in session_list:
-                speakers = [ndb.Key(urlsafe=speaker.websafeKey) for speaker in session.speakers]
-                speaker_set.update(speakers)
-
-            speaker_list = []
-            if len(speaker_set):
-                speaker_list = ndb.get_multi(list(speaker_set))
-        else:
-            speaker_list = Speaker.query().fetch()
+        speaker_list = Speaker.query().fetch()
 
         return SpeakerListResponse(
             items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
@@ -1196,7 +1181,7 @@ class ConferenceApi(remote.Service):
         return self._copySpeakerToForm(speaker)
 
 
-    @endpoints.method(SpeakerQueryRequest, SpeakerListResponse,
+    @endpoints.method(message_types.VoidMessage, SpeakerListResponse,
         path='speaker',
         http_method='GET',
         name='getSpeakers')
@@ -1239,6 +1224,38 @@ class ConferenceApi(remote.Service):
     def destroySpeaker(self, request):
         """Remove a speaker profile"""
         return self._destroySpeaker(request)
+
+
+    def _querySpeakers(self, request):
+        """query speaker objects, return SpeakerListResponse"""
+        ws_conference_key = request.websafeConferenceKey
+
+        if ws_conference_key:
+            a_conference = self._getConference(ws_conference_key)
+
+            session_list = Session.query(ancestor=a_conference.key).fetch()
+            speaker_set = set()
+            for session in session_list:
+                speakers = [ndb.Key(urlsafe=speaker.websafeKey) for speaker in session.speakers]
+                speaker_set.update(speakers)
+
+            speaker_list = []
+            if len(speaker_set):
+                speaker_list = ndb.get_multi(list(speaker_set))
+        else:
+            speaker_list = Speaker.query().fetch()
+
+        return SpeakerListResponse(
+            items=[self._copySpeakerToForm(speaker) for speaker in speaker_list])
+
+
+    @endpoints.method(SpeakerQueryRequest, SpeakerListResponse,
+        path="speaker/query",
+        http_method='POST',
+        name='querySpeakers')
+    def querySpeakers(self, request):
+        """Query for Speakers"""
+        return self._querySpeakers(request)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
