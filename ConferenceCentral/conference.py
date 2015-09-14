@@ -54,6 +54,8 @@ from models import SpeakerLinkResponse
 from models import SpeakerRequest
 from models import SpeakerResponse
 from models import SpeakerListResponse
+from models import SpeakerQueryRequest
+from models import SessionSpeakerRequest
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -806,13 +808,16 @@ class ConferenceApi(remote.Service):
             elif data not in (None, []):
                 # special handling for date (convert string to Date)
                 if field.name == 'date':
-                    data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+                    data = datetime.strptime(data, "%Y-%m-%d").date()
                 # special handling for time (convert string to Time)
                 if field.name == 'startTime':
-                    data['startTime'] = datetime.strptime(data['startTime'], "%H:%M").time()
+                    data = datetime.strptime(data, "%H:%M").time()
                 # write to Conference object
                 setattr(a_session, field.name, data)
         a_session.put()
+        # TODO: update areas with SessionLinks
+        # update speaker sessions
+        # update wishlists
         return self._copySessionToForm(a_session)
 
 
@@ -1115,26 +1120,17 @@ class ConferenceApi(remote.Service):
         ws_conference_key = request.websafeConferenceKey
 
         if ws_conference_key:
-            # TODO: find a way to reduce 3 gets
-            a_conference = self._getConference(ws_conference_key) # get #1
-            # TODO wrap in try block
-            # a_conference_key = ndb.Key(urlsafe=ws_conference_key)
+            a_conference = self._getConference(ws_conference_key)
 
-            session_list = Session.query(ancestor=a_conference.key).fetch() # get #2
+            session_list = Session.query(ancestor=a_conference.key).fetch()
             speaker_set = set()
-            speaker_list = []
             for session in session_list:
                 speakers = [ndb.Key(urlsafe=speaker.websafeKey) for speaker in session.speakers]
                 speaker_set.update(speakers)
-                # if session.speakers != []:
-                #     speaker_list.append(session.speakers)
 
-            # print "**** speaker list ****\n%s\n**** * ****" % speaker_list
-            print "**** speaker set ****\n%s\n**** * ****" % speaker_set
+            speaker_list = []
             if len(speaker_set):
-                # speaker_list = Speaker.query(Speaker.name.IN(list(speaker_set))).fetch()
-                speaker_list = ndb.get_multi(list(speaker_set)) # get #3
-            print "**** speaker list ****\n%s\n**** * ****" % speaker_list
+                speaker_list = ndb.get_multi(list(speaker_set))
         else:
             speaker_list = Speaker.query().fetch()
 
@@ -1156,7 +1152,7 @@ class ConferenceApi(remote.Service):
             in request.all_fields()
             }
 
-        del data['websafeConferenceKey']
+        del data['websafeKey']
 
         a_speaker = Speaker(**data)
         a_speaker.put()
@@ -1181,9 +1177,7 @@ class ConferenceApi(remote.Service):
                 setattr(speaker, field.name, data)
         speaker.put()
         # TODO: update areas with speakerLinks
-        # update conference speakers
         # update session speakers
-        # update wishlists
         return self._copySpeakerToForm(speaker)
 
 
@@ -1201,7 +1195,7 @@ class ConferenceApi(remote.Service):
         return self._copySpeakerToForm(speaker)
 
 
-    @endpoints.method(SpeakerRequest, SpeakerListResponse,
+    @endpoints.method(SpeakerQueryRequest, SpeakerListResponse,
         path='speaker',
         http_method='GET',
         name='getSpeakers')
@@ -1250,7 +1244,7 @@ class ConferenceApi(remote.Service):
 
     @ndb.transactional(xg=True)
     def _addSessionSpeaker(self, request):
-        """Add a session and speaker object relationship"""
+        """Add a Session/Speaker relationship"""
         speaker_key = ndb.Key(urlsafe=request.websafeSpeakerKey)
         session_key = ndb.Key(urlsafe=request.websafeSessionKey)
 
@@ -1281,13 +1275,14 @@ class ConferenceApi(remote.Service):
         speaker.sessions.append(a_session_link)
 
         ndb.put_multi([session, speaker])
+        # TODO: if speaker sessions > 1 then add to memcache
 
         return BooleanMessage(data=True)
 
 
     @ndb.transactional(xg=True)
     def _removeSessionSpeaker(self, request):
-        """remove a session and speaker object relationship"""
+        """Remove a Session/Speaker relationship"""
         speaker_key = ndb.Key(urlsafe=request.websafeSpeakerKey)
         session_key = ndb.Key(urlsafe=request.websafeSessionKey)
 
@@ -1327,7 +1322,7 @@ class ConferenceApi(remote.Service):
         http_method='POST',
         name='addSessionSpeaker')
     def addSessionSpeaker(self, request):
-        """Add session speaker relationship"""
+        """Add Session/Speaker relationship"""
         return self._addSessionSpeaker(request)
 
 
@@ -1336,19 +1331,30 @@ class ConferenceApi(remote.Service):
         http_method='DELETE',
         name='removeSessionSpeaker')
     def removeSessionSpeaker(self, request):
-        """Remove session speaker relationship"""
+        """Remove Session/Speaker relationship"""
         return self._removeSessionSpeaker(request)
 
 
     def _getSessionsBySpeaker(self, request):
-        a_speaker = request.speaker
-        session_list = Session.query(Session.speakers==a_speaker)
+        """Get Session/Speaker relationship list, return SessionForms"""
+        a_name = request.name
+        a_ws_speaker_key = request.websafeSpeakerKey
+        if bool(a_name) == bool(a_ws_speaker_key):
+            raise endpoints.BadRequestException(
+                "Pass one of 'name' or 'websafeSessionKey' exclusively")
+
+        session_list = Session.query(Session.speakers ==
+            SpeakerLink(
+                name = a_name,
+                websafeKey = a_ws_speaker_key)
+            )
+
         return SessionForms(
             items=[self._copySessionToForm(session) for session in session_list])
 
 
-    @endpoints.method(SESS_BY_SPEAKER_REQUEST, SessionForms,
-        path='conference/session/speaker/{speaker}',
+    @endpoints.method(SessionSpeakerRequest, SessionForms,
+        path='session/speakers',
         http_method='GET',
         name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
