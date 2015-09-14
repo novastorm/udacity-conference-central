@@ -25,15 +25,20 @@ class ConferenceLink(ndb.Model):
     """ConferenceLink -- used to hold basic conference information for quick access
     to pertinent conference information
     """
-    name          = ndb.StringProperty(required=True)
-    websafeKey    = ndb.StringProperty(required=True)
+    name       = ndb.StringProperty(required=True)
+    websafeKey = ndb.StringProperty(required=True)
 
 class SessionLink(ndb.Model):
     """SessionLink -- used to hold basic session information for quick access
     to pertinent session information
     """
-    name          = ndb.StringProperty(required=True)
-    websafeKey    = ndb.StringProperty(required=True)
+    name       = ndb.StringProperty(required=True)
+    websafeKey = ndb.StringProperty(required=True)
+
+class SessionLinkResponse(messages.Message):
+    """SessionLinkResponse -- SessionLink outboud form message."""
+    name       = messages.StringField(1)
+    websafeKey = messages.StringField(2)
 
 class SpeakerLink(ndb.Model):
     """SpeakerLink -- used to hold basic speaker information for quick access
@@ -42,6 +47,12 @@ class SpeakerLink(ndb.Model):
     name       = ndb.StringProperty()
     numberOfSessions = ndb.IntegerProperty()
     websafeKey = ndb.StringProperty()
+
+class SpeakerLinkResponse(messages.Message):
+    """SpeakerLinkResponse -- SpeakerLink outboud form message."""
+    name       = messages.StringField(1)
+    numberOfSessions = messages.IntegerField(2)
+    websafeKey = messages.StringField(3)
 
 class Profile(ndb.Model):
     """Profile -- User profile object"""
@@ -150,6 +161,7 @@ class Session(ndb.Model):
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
     date          = ndb.DateProperty()
     startTime     = ndb.TimeProperty()
+    endTime       = ndb.TimeProperty()
     # speakers      = ndb.StringProperty(repeated=True) # Speaker name
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
 
@@ -162,7 +174,7 @@ class SessionForm(messages.Message):
     date          = messages.StringField(5) # DateField YYYY-MM-DD
     startTime     = messages.StringField(6) # TimeField HH:MM
     websafeKey    = messages.StringField(7)
-    speakers      = messages.StringField(8, repeated=True)
+    speakers      = messages.MessageField(SpeakerLinkResponse, 8, repeated=True)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
@@ -218,19 +230,33 @@ class Speaker(ndb.Model):
     # update conferences containing this speaker
     # update sessions containining this speaker
 
+
 class SpeakerRequest(messages.Message):
     """SpeakerRequest -- Speaker outbound form message"""
-    websafeConferenceKey = messages.StringField(1)
     name        = messages.StringField(2)
     description = messages.StringField(3)
+
 
 class SpeakerResponse(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     name        = messages.StringField(1)
     description = messages.StringField(2)
-    websafeKey = messages.StringField(3)
+    websafeKey  = messages.StringField(3)
+    sessions    = messages.MessageField(SessionLinkResponse, 4, repeated=True)
+
 
 class SpeakerListResponse(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""
     items = messages.MessageField(SpeakerResponse, 1, repeated=True)
+
+
+class SpeakerQueryRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    websafeConferenceKey = messages.StringField(1)
+
+
+class SessionSpeakerRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    websafeSpeakerKey = messages.StringField(1)
+    name        = messages.StringField(2)
 
