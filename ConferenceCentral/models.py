@@ -223,7 +223,7 @@ class ConferenceSessionWishlistRequest(messages.Message):
 
 class Speaker(ndb.Model):
     """Speaker -- Conference Speaker object"""
-    name        = ndb.StringProperty()
+    name        = ndb.StringProperty(required=True)
     description = ndb.StringProperty()
     sessions    = ndb.StructuredProperty(SessionLink, repeated=True) # Session name
 
