@@ -41,8 +41,8 @@ from models import ConferenceQueryForms
 from models import Session
 from models import SessionLink
 from models import SessionLinkResponse
-from models import SessionForm
-from models import SessionForms
+from models import SessionResponse
+from models import SessionListResponse
 from models import SessionType
 from models import SessionTypeRequest
 from models import SessionTypeResponse
@@ -109,7 +109,7 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 CONF_SESS_INDEX_REQUEST = CONF_GET_REQUEST
 
 CONF_SESS_STORE_REQUEST = endpoints.ResourceContainer(
-    SessionForm,
+    SessionResponse,
     websafeConferenceKey=messages.StringField(1))
 
 CONF_SESS_SHOW_REQUEST = endpoints.ResourceContainer(
@@ -117,7 +117,7 @@ CONF_SESS_SHOW_REQUEST = endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1))
 
 CONF_SESS_UPDATE_REQUEST = endpoints.ResourceContainer(
-    SessionForm,
+    SessionResponse,
     websafeSessionKey=messages.StringField(1))
 
 CONF_SESS_DELETE_REQUEST = CONF_SESS_SHOW_REQUEST
@@ -727,8 +727,8 @@ class ConferenceApi(remote.Service):
 # - - - Session - - - - - - - - - - - - - - - - - - - -
 
     def _copySessionToForm(self, a_session):
-        """Copy relevant field from Session to SessionForm."""
-        a_form = SessionForm()
+        """Copy relevant field from Session to SessionResponse."""
+        a_form = SessionResponse()
         for field in a_form.all_fields():
             if hasattr(a_session, field.name):
                 if field.name == 'date' or field.name == 'startTime':
@@ -745,7 +745,7 @@ class ConferenceApi(remote.Service):
 
 
     def _storeSessionObject(self, request):
-        """Create conference session object, return SessionForm/request."""
+        """Create conference session object, return SessionResponse/request."""
 
         user = self._getUser()
         a_conference = self._getConference(request.websafeConferenceKey)
@@ -787,7 +787,7 @@ class ConferenceApi(remote.Service):
 
 
     def _showSessionObject(self, request):
-        """Retrieve conference session object, return SessionForm"""
+        """Retrieve conference session object, return SessionResponse"""
         a_session = self._getSession(request.websafeSessionKey)
         return self._copySessionToForm(a_session)
 
@@ -799,7 +799,7 @@ class ConferenceApi(remote.Service):
         a_session = self._getSession(request.websafeSessionKey)
 
         # Not getting all the fields, so don't create a new object; just
-        # copy relevant fields from SessionForm to a ConferenceSession object
+        # copy relevant fields from SessionResponse to a ConferenceSession object
         for field in request.all_fields():
             data = getattr(request, field.name)
             # remove attribute if data is an empty
@@ -824,7 +824,7 @@ class ConferenceApi(remote.Service):
 
     @ndb.transactional()
     def _destroySessionObject(self, request):
-        """destroy conference session object, return SessionForm"""
+        """destroy conference session object, return SessionResponse"""
 
         user = self._getUser()
         a_session= self._getSession(request.websafeSessionKey)
@@ -837,7 +837,7 @@ class ConferenceApi(remote.Service):
         return self._copySessionToForm(a_session)
 
 
-    @endpoints.method(CONF_SESS_STORE_REQUEST, SessionForm,
+    @endpoints.method(CONF_SESS_STORE_REQUEST, SessionResponse,
         path='conference/{websafeConferenceKey}/session',
         http_method='POST',
         name='createSession')
@@ -846,7 +846,7 @@ class ConferenceApi(remote.Service):
         return self._storeSessionObject(request)
 
 
-    @endpoints.method(CONF_SESS_SHOW_REQUEST, SessionForm,
+    @endpoints.method(CONF_SESS_SHOW_REQUEST, SessionResponse,
         path='conference/session/{websafeSessionKey}',
         http_method='GET',
         name='showSession')
@@ -855,7 +855,7 @@ class ConferenceApi(remote.Service):
         return self._showSessionObject(request)
 
 
-    @endpoints.method(CONF_SESS_UPDATE_REQUEST, SessionForm,
+    @endpoints.method(CONF_SESS_UPDATE_REQUEST, SessionResponse,
         path='conference/session/{websafeSessionKey}',
         http_method='PUT',
         name='updateSession')
@@ -864,7 +864,7 @@ class ConferenceApi(remote.Service):
         return self._updateSessionObject(request)
 
 
-    @endpoints.method(CONF_SESS_DELETE_REQUEST, SessionForm,
+    @endpoints.method(CONF_SESS_DELETE_REQUEST, SessionResponse,
         path='conference/session/{websafeSessionKey}',
         http_method='DELETE',
         name='destroySession')
@@ -874,16 +874,16 @@ class ConferenceApi(remote.Service):
 
 
     def _listConferenceSessions(self, request):
-        """List session objects, return SessionForms"""
+        """List session objects, return SessionListResponse"""
         a_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         session_list = Session.query(ancestor=a_conference_key).fetch()
 
-        return SessionForms(
+        return SessionListResponse(
             items=[self._copySessionToForm(session) for session in session_list]
         )
 
 
-    @endpoints.method(CONF_SESS_INDEX_REQUEST, SessionForms,
+    @endpoints.method(CONF_SESS_INDEX_REQUEST, SessionListResponse,
         path='conference/{websafeConferenceKey}/session',
         http_method='GET',
         name='getConferenceSessions')
@@ -996,11 +996,11 @@ class ConferenceApi(remote.Service):
         a_type = request.typeOfSession
         a_query = Session.query(ancestor=a_conference.key)
         session_list = a_query.filter(Session.typeOfSession == a_type)
-        return SessionForms(
+        return SessionListResponse(
             items=[self._copySessionToForm(session) for session in session_list])
 
 
-    @endpoints.method(SESS_BY_TYPE_REQUEST, SessionForms,
+    @endpoints.method(SESS_BY_TYPE_REQUEST, SessionListResponse,
         path='conference/{websafeConferenceKey}/session/type/{typeOfSession}',
         http_method='GET',
         name='getConferenceSessionsByType')
@@ -1012,7 +1012,7 @@ class ConferenceApi(remote.Service):
 # - - - Session wishlist - - - - - - - - - - - - - - - - - - - -
 
     def _getSessionsInWishlist(self, request):
-        """List user wishlist session objects, return SessionForms"""
+        """List user wishlist session objects, return SessionListResponse"""
         profile = self._getProfileFromUser()
         session_key_list = [ndb.Key(urlsafe=session.websafeKey) for session in profile.sessionWishlist]
         wsck = getattr(request, 'websafeConferenceKey')
@@ -1027,7 +1027,7 @@ class ConferenceApi(remote.Service):
         else:
             session_list = ndb.get_multi(session_key_list)
 
-        return SessionForms(items=[self._copySessionToForm(session) for session in session_list])
+        return SessionListResponse(items=[self._copySessionToForm(session) for session in session_list])
 
 
     def _addSessionToWishlist(self, request):
@@ -1071,7 +1071,7 @@ class ConferenceApi(remote.Service):
         return BooleanMessage(data=True)
 
 
-    @endpoints.method(ConferenceSessionWishlistRequest, SessionForms,
+    @endpoints.method(ConferenceSessionWishlistRequest, SessionListResponse,
         path='conference/session/wishlist',
         http_method='POST',
         name='getSessionsInWishlist')
@@ -1354,7 +1354,7 @@ class ConferenceApi(remote.Service):
 
 
     def _getSessionsBySpeaker(self, request):
-        """Get Session/Speaker relationship list, return SessionForms"""
+        """Get Session/Speaker relationship list, return SessionListResponse"""
         a_name = request.name
         a_ws_speaker_key = request.websafeSpeakerKey
         if bool(a_name) == bool(a_ws_speaker_key):
@@ -1367,11 +1367,11 @@ class ConferenceApi(remote.Service):
                 websafeKey = a_ws_speaker_key)
             )
 
-        return SessionForms(
+        return SessionListResponse(
             items=[self._copySessionToForm(session) for session in session_list])
 
 
-    @endpoints.method(SpeakerSessionsRequest, SessionForms,
+    @endpoints.method(SpeakerSessionsRequest, SessionListResponse,
         path='session/speakers',
         http_method='GET',
         name='getSessionsBySpeaker')

@@ -165,8 +165,8 @@ class Session(ndb.Model):
     # speakers      = ndb.StringProperty(repeated=True) # Speaker name
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
 
-class SessionForm(messages.Message):
-    """SessionForm -- Session outbound form message"""
+class SessionResponse(messages.Message):
+    """SessionResponse -- Session outbound form message"""
     name          = messages.StringField(1)
     highlights    = messages.StringField(2)
     duration      = messages.IntegerField(3)
@@ -176,9 +176,9 @@ class SessionForm(messages.Message):
     websafeKey    = messages.StringField(7)
     speakers      = messages.MessageField(SpeakerLinkResponse, 8, repeated=True)
 
-class SessionForms(messages.Message):
-    """SessionForms -- multiple Session outbound form message"""
-    items = messages.MessageField(SessionForm, 1, repeated=True)
+class SessionListResponse(messages.Message):
+    """SessionListResponse -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionResponse, 1, repeated=True)
 
 
 ###############################################################################
