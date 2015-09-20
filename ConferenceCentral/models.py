@@ -181,6 +181,18 @@ class SessionListResponse(messages.Message):
     items = messages.MessageField(SessionResponse, 1, repeated=True)
 
 
+class SessionQueryFilter(messages.Message):
+    """SessionQueryFilter -- Session query filter form"""
+    field = messages.StringField(1)
+    operator = messages.StringField(2)
+    value = messages.StringField(3)
+
+
+class SessionQueryRequest(messages.Message):
+    """SessionQueryRequest -- Multiple SessionQueryFilter request form"""
+    filters = messages.MessageField(SessionQueryFilter, 1, repeated=True)
+
+
 ###############################################################################
 #
 # SessionType object

@@ -43,6 +43,7 @@ from models import SessionLink
 from models import SessionLinkResponse
 from models import SessionResponse
 from models import SessionListResponse
+from models import SessionQueryRequest
 from models import SessionType
 from models import SessionTypeRequest
 from models import SessionTypeResponse
@@ -890,6 +891,22 @@ class ConferenceApi(remote.Service):
     def getConferenceSessions(self, request):
         """Get list of conference Sessions"""
         return self._listConferenceSessions(request)
+
+
+    def _getSessionQuery(self, request):
+        """Return query from subitted filters."""
+        ws_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        # query = Session
+        return []
+
+    @endpoints.method(SessionQueryRequest, SessionListResponse,
+        path='querySessions',
+        http_method='POST',
+        name='querySessions')
+    def querySession(self, request):
+        """Query for Sessions"""
+        session_list = self._getSessionQuery(request)
+        return SessionListResponse(items=[self._copySessionToForm(session) for session in session_list])
 
 
 # - - - SessionType- - - - - - - - - - - - - - - - - - - -
