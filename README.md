@@ -117,4 +117,8 @@ sessionWishList | structured (SessionLink, repeated)
 
 *Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?*
 
+- workshop sessions that begin before 7pm
+- workshop sessions that end before 7pm
+
 #### Task 4: Add a Task
+
