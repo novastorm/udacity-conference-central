@@ -70,6 +70,8 @@ API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
+
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 DEFAULTS = {
@@ -1294,6 +1296,7 @@ class ConferenceApi(remote.Service):
 
         ndb.put_multi([session, speaker])
         # TODO: if speaker sessions > 1 then add to memcache
+        self._updateFeaturedSpeaker(speaker)
 
         return BooleanMessage(data=True)
 
@@ -1378,6 +1381,23 @@ class ConferenceApi(remote.Service):
     def getSessionsBySpeaker(self, request):
         """Get list of sessions by speaker across all conferences"""
         return self._getSessionsBySpeaker(request)
+
+
+    def _updateFeaturedSpeaker(self, speaker):
+        """Update featured speaker in memcache"""
+        # TODO: implement update featured speaker
+        pass
+
+    @endpoints.method(message_types.VoidMessage, SpeakerResponse,
+        path='featured_speakers',
+        http_method='GET',
+        name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return list of featured speakers"""
+        speaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
+        if not speaker:
+            return SpeakerResponse()
+        return self._copySpeakerToForm(speaker)
 
 
 api = endpoints.api_server([ConferenceApi]) # register API

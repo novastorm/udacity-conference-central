@@ -14,6 +14,10 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 import httplib
 import endpoints
+
+from datetime import datetime
+from datetime import timedelta
+
 from protorpc import messages
 from google.appengine.ext import ndb
 
@@ -161,9 +165,12 @@ class Session(ndb.Model):
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
     date          = ndb.DateProperty()
     startTime     = ndb.TimeProperty()
-    endTime       = ndb.TimeProperty()
+    # endTime       = ndb.TimeProperty()
     # speakers      = ndb.StringProperty(repeated=True) # Speaker name
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
+
+    # computes endTime on put()
+    endTime       = ndb.ComputedProperty(lambda self: (self.startTime + timedelta(minutes=self.duration) if self.startTime else None))
 
 class SessionResponse(messages.Message):
     """SessionResponse -- Session outbound form message"""
