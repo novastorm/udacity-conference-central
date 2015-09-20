@@ -84,8 +84,10 @@ OPERATORS = {
             'EQ':   '=',
             'GT':   '>',
             'GTEQ': '>=',
+            'GE':   '>=',
             'LT':   '<',
             'LTEQ': '<=',
+            'LE':   '<=',
             'NE':   '!='
             }
 
@@ -95,6 +97,13 @@ FIELDS =    {
             'MONTH': 'month',
             'MAX_ATTENDEES': 'maxAttendees',
             }
+
+SESSION_FIELDS = {
+    'TYPE': 'typeOfSession',
+    'DATE': 'date',
+    'START': 'startTime',
+    'DURATION': 'duration',
+}
 
 CONF_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
@@ -122,6 +131,11 @@ CONF_SESS_UPDATE_REQUEST = endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1))
 
 CONF_SESS_DELETE_REQUEST = CONF_SESS_SHOW_REQUEST
+
+CONF_SESS_QUERY_REQ = endpoints.ResourceContainer(
+    SessionQueryRequest,
+    websafeConferenceKey=messages.StringField(1)
+    )
 
 
 SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
@@ -893,13 +907,53 @@ class ConferenceApi(remote.Service):
         return self._listConferenceSessions(request)
 
 
+###############################################################################
+#
+# Session Query
+#
+
     def _getSessionQuery(self, request):
         """Return query from subitted filters."""
         ws_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-        # query = Session
+        q = Session.query(ancestor=ws_conference_key)
+        first_inequality, filters, extra_filters = self._formatSessionFilters(request.filters)
+        
+        print first_inequality, filters, extra_filters
+
         return []
 
-    @endpoints.method(SessionQueryRequest, SessionListResponse,
+    def _formatSessionFilters(self, filters):
+        """Parse and format user supplied filters"""
+        formatted_filters = []
+        first_inequality = None
+        extra_inequality_filters = []
+
+        for filter in filters:
+            filterObject = {field.name: getattr(filter, field.name) for field in filter.all_fields()}
+
+            try:
+                filterObject["field"] = SESSION_FIELDS[filterObject["field"]]
+                filterObject["operator"] = OPERATORS[filterObject["operator"]]
+            except KeyError:
+                raise endpoints.BadRequestException("Filter contains invalid field or operator.")
+
+            # Every operation except "=" is an inequality
+            if filterObject["operator"] != "=":
+                # check if inequality operation has been used in previous filters
+                # disallow the filter if inequality was performed on a different field before
+                # track the field on which the inequality operation is performed
+                if first_inequality and first_inequality != filterObject["field"]:
+                    extra_inequality_filters.append(filterObject)
+                else:
+                    first_inequality = filterObject["field"]
+                    formatted_filters.append(filterObject)
+            else:
+                formatted_filters.append(filterObject)
+
+        return (first_inequality, formatted_filters, extra_inequality_filters)
+
+
+    @endpoints.method(CONF_SESS_QUERY_REQ, SessionListResponse,
         path='querySessions',
         http_method='POST',
         name='querySessions')
