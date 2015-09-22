@@ -13,9 +13,9 @@ Features:
   - Speaker management
   - User session wish list
 
-Demo avaiable at: [omgidb-conference-central.appspot.com](http://omgidb-conference-central.appspot.com)
+View the demo at: [omgidb-conference-central.appspot.com](http://omgidb-conference-central.appspot.com)
 
-[API Explorer] (http://omgidb-conference-central.appspot.com/_ah/api/explorer)
+Explore the API endpoints with the [API Explorer] (http://omgidb-conference-central.appspot.com/_ah/api/explorer)
 
 
 ### Project Tasks
@@ -29,7 +29,36 @@ Sessions are implemented using a Conference as the parent. This method creates a
 The relationship between Session and Speaker is described using a structured property represented by a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore.
 
 
-##### API endpoints
+#### Task 2: Add Sessions to User Wishlist
+
+Users should be able to mark some sessions that they are interested in and retrieve their own current wishlist.
+
+Updated Profile object to include a structure property representing a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore. 
+
+
+##### Profile (updates)
+
+sessionWishList property added to store the session wishlist references.
+
+Property   | Type
+---------- | ----------------------------------
+sessionWishList | structured (SessionLink, repeated)
+
+
+#### Task 3: Work on indexes and queries
+
+##### Additional Queries
+##### Challenge Question
+
+*Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?*
+
+- workshop sessions that begin before 7pm
+- workshop sessions that end before 7pm
+
+#### Task 4: Add a Task
+
+
+### Endpoints
 
 URI | endpoints method | description
 --- | ---------------- | -----------
@@ -37,11 +66,17 @@ GET conference/{websafeConferenceKey}/session | getConferenceSessions | Given a 
 GET conference/{websafeConferenceKey}/session/type/{typeOfSession} | getConferenceSessionsByType | Given a conference, return all sessions of a specified type (eg lecture, keynote, workshop)
 GET session/speakers?name=</br> GET session/speakers?websafeSpeakerKey= | getSessionsBySpeaker | Given a speaker, return all sessions given by this particular speaker, across all conference 
 POST conference/{websafeConferenceKey}/session | createSession | open only to the organizer of the conference
+POST conference/session/{websafeSessionKey}/wishlist | addSessionToWishlist | adds the session to the user's list of sessions they are interested in attending
+GET conference/session/wishlist | getSessionsInWishlist | query for all the sessions in a conference that the user is interested in
 
+
+### Objects
 
 ##### Session Object
 
-Sessions and ideally be implemented as a child of a conference. A Session also contains a list of 
+Implemented as a child of a conference.
+
+Session.speakers is a list of SpeakerLink items containing  commonly queried data with the Session object in addition to a reference to the Speaker
 
 Property      | Type
 ------------- | ----------------------------------
@@ -57,6 +92,8 @@ speakers      | structured (SpeakerLink, repeated)
 ##### Speaker Object
 
 Speakers will have their own description and possibly additional information.
+
+Speaker.sessions is a list of SessionLink items containing  commonly queried data with the Spekaer object in addition to a reference to the Session
 
 Property    | Type
 ----------- | ----------------------------------
@@ -86,39 +123,3 @@ Property   | Type
 ---------- | ----------------------------------
 name       | string, required
 websafeKey | string, required
-
-
-#### Task 2: Add Sessions to User Wishlist
-
-Users should be able to mark some sessions that they are interested in and retrieve their own current wishlist.
-
-Updated Profile object to include a structure property representing a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore. 
-
-##### API endpoints
-
-URI | endpoints method | description
---- | ---------------- | -----------
-POST conference/session/{websafeSessionKey}/wishlist | addSessionToWishlist | adds the session to the user's list of sessions they are interested in attending
-GET conference/session/wishlist | getSessionsInWishlist | query for all the sessions in a conference that the user is interested in
-
-##### Profile (updates)
-
-sessionWishList property added to store the session wishlist references.
-
-Property   | Type
----------- | ----------------------------------
-sessionWishList | structured (SessionLink, repeated)
-
-
-#### Task 3: Work on indexes and queries
-
-##### Additional Queries
-##### Challenge Question
-
-*Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?*
-
-- workshop sessions that begin before 7pm
-- workshop sessions that end before 7pm
-
-#### Task 4: Add a Task
-
