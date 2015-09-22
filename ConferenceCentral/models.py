@@ -159,10 +159,8 @@ class Session(ndb.Model):
     highlights    = ndb.StringProperty()
     duration      = ndb.IntegerProperty()
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
-    date          = ndb.DateProperty()
+    date          = ndb.DateProperty(default=None)
     startTime     = ndb.TimeProperty()
-    endTime       = ndb.TimeProperty()
-    # speakers      = ndb.StringProperty(repeated=True) # Speaker name
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
 
 class SessionResponse(messages.Message):
@@ -179,6 +177,18 @@ class SessionResponse(messages.Message):
 class SessionListResponse(messages.Message):
     """SessionListResponse -- multiple Session outbound form message"""
     items = messages.MessageField(SessionResponse, 1, repeated=True)
+
+
+class SessionQueryFilter(messages.Message):
+    """SessionQueryFilter -- Session query filter form"""
+    field = messages.StringField(1)
+    operator = messages.StringField(2)
+    value = messages.StringField(3)
+
+
+class SessionQueryRequest(messages.Message):
+    """SessionQueryRequest -- Multiple SessionQueryFilter request form"""
+    filters = messages.MessageField(SessionQueryFilter, 1, repeated=True)
 
 
 ###############################################################################
