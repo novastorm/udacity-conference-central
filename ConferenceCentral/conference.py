@@ -105,6 +105,12 @@ SESSION_FIELDS = {
     'DURATION': 'duration',
 }
 
+STRING = "string"
+INT = "int"
+DATE = "date"
+DATETIME = "datetime"
+TIME = "time"
+
 CONF_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1),
@@ -819,7 +825,7 @@ class ConferenceApi(remote.Service):
             data = getattr(request, field.name)
             # remove attribute if data is an empty
             if data == "":
-                delattr(a_course, field.name)
+                delattr(a_session, field.name)
             # only copy fields where we get data
             elif data not in (None, []):
                 # special handling for date (convert string to Date)
@@ -916,20 +922,46 @@ class ConferenceApi(remote.Service):
         """Return query from subitted filters."""
         ws_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         q = Session.query(ancestor=ws_conference_key)
-        first_inequality, filters, extra_filters = self._formatSessionFilters(request.filters)
+        inequality_filter, filters, extra_filters = self._formatSessionFilters(request.filters)
         
-        print first_inequality, filters, extra_filters
+        if inequality_filter:
+            q = q.order(ndb.GenericProperty(inequality_filter))
 
-        return []
+        for filterObject in filters:
+            if filterObject["field"] in ["duration"]:
+                filterObject["value"] = int(filterObject["value"])
+            formatted_query = ndb.query.FilterNode(filterObject["field"], filterObject["operator"], filterObject["value"])
+            q = q.filter(formatted_query)
+
+        session_list = q.fetch()
+
+        if extra_filters:
+            for filterObject in extra_filters:
+                filterField = filterObject["field"]
+                if filterField in ["duration"]:
+                    aFilter = self._sessionFilter(filterObject, INT)
+                elif filterField in ["startTime"]:
+                    aFilter = self._sessionFilter(filterObject, TIME)
+                elif filterField in ["date"]:
+                    aFilter = self._sessionFilter(filterObject, DATE)
+                else:
+                    aFilter = self._sessionFilter(filterObject)
+                print aFilter
+                session_list = filter(aFilter, session_list)
+                session_list = sorted(session_list, key=lambda session: getattr(session, filterField))
+
+        session_list = sorted(session_list, key=lambda session: getattr(session, "name"))
+
+        return session_list
 
     def _formatSessionFilters(self, filters):
         """Parse and format user supplied filters"""
         formatted_filters = []
-        first_inequality = None
+        inequality_filter = None
         extra_inequality_filters = []
 
-        for filter in filters:
-            filterObject = {field.name: getattr(filter, field.name) for field in filter.all_fields()}
+        for filterObject in filters:
+            filterObject = {field.name: getattr(filterObject, field.name) for field in filterObject.all_fields()}
 
             try:
                 filterObject["field"] = SESSION_FIELDS[filterObject["field"]]
@@ -942,15 +974,90 @@ class ConferenceApi(remote.Service):
                 # check if inequality operation has been used in previous filters
                 # disallow the filter if inequality was performed on a different field before
                 # track the field on which the inequality operation is performed
-                if first_inequality and first_inequality != filterObject["field"]:
+                if inequality_filter:
                     extra_inequality_filters.append(filterObject)
                 else:
-                    first_inequality = filterObject["field"]
+                    inequality_filter = filterObject["field"]
                     formatted_filters.append(filterObject)
             else:
                 formatted_filters.append(filterObject)
 
-        return (first_inequality, formatted_filters, extra_inequality_filters)
+        return (inequality_filter, formatted_filters, extra_inequality_filters)
+
+
+    def _sessionFilter(self, filterObject, type=STRING):
+        if type == INT:
+            return self._sessionFilterInt(filterObject)
+
+        if type == TIME:
+            return self._sessionFilterTime(filterObject)
+
+        if type == DATE:
+            return self._sessionFilterDate(filterObject)
+
+        return self._sessionFilterString(filterObject)
+
+
+    def _sessionFilterString(self, filterObject):
+        """Generate Session string filter"""
+        _field = filterObject["field"]
+        _operator = filterObject["operator"]
+        _value = filterObject["value"]
+
+        def aFilter(record):
+            # %r to prevent code injection
+            return eval("record.%s %s %r" % (_field, _operator, _value))
+
+        return aFilter
+
+
+    def _sessionFilterInt(self, filterObject):
+        """Generate Session integer filter"""
+        _field = filterObject["field"]
+        _operator = filterObject["operator"]
+        _value = int(filterObject["value"])
+
+        def aFilter(record):
+            value = _value
+            return eval("record.%s %s value" % (_field, _operator))
+
+        return aFilter
+
+
+    def _sessionFilterTime(self, filterObject):
+        """Generate Session time filter"""
+        _field = filterObject["field"]
+        _operator = filterObject["operator"]
+        _value = datetime.strptime(filterObject["value"], "%H:%M").time()
+        def aFilter(record):
+            target = getattr(record, _field)
+            value = _value
+            print "*** * ***"
+            print target, value
+            return eval("target %s value" % _operator)
+
+        return aFilter
+
+
+    def _sessionFilterDate(self, filterObject):
+        """Generate Session date filter"""
+        _field = filterObject["field"]
+        _operator = filterObject["operator"]
+        if filterObject["value"]:
+            _value = datetime.strptime(filterObject["value"], "%Y-%m-%d").date()
+        else: 
+            _value = None
+        def aFilter(record):
+            target = getattr(record, _field) or None
+            print "*** * ***"
+            print target, _value
+            if ((target in [None, ""]) and (_operator not in ["=", "!="])):
+                return False
+            value = _value
+            print "target %s value" % _operator
+            return eval("target %s value" % _operator)
+
+        return aFilter
 
 
     @endpoints.method(CONF_SESS_QUERY_REQ, SessionListResponse,

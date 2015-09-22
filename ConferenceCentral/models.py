@@ -159,10 +159,8 @@ class Session(ndb.Model):
     highlights    = ndb.StringProperty()
     duration      = ndb.IntegerProperty()
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
-    date          = ndb.DateProperty()
+    date          = ndb.DateProperty(default=None)
     startTime     = ndb.TimeProperty()
-    endTime       = ndb.TimeProperty()
-    # speakers      = ndb.StringProperty(repeated=True) # Speaker name
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
 
 class SessionResponse(messages.Message):
