@@ -915,10 +915,10 @@ class ConferenceApi(remote.Service):
 
 ###############################################################################
 #
-# Session Query
+# Conference Session Query
 #
 
-    def _getSessionQuery(self, request):
+    def _getConferenceSessionQuery(self, request):
         """Return query from subitted filters."""
         ws_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         q = Session.query(ancestor=ws_conference_key)
@@ -1061,12 +1061,12 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(CONF_SESS_QUERY_REQ, SessionListResponse,
-        path='querySessions',
+        path='queryConferenceSessions',
         http_method='POST',
-        name='querySessions')
-    def querySession(self, request):
-        """Query for Sessions"""
-        session_list = self._getSessionQuery(request)
+        name='queryConferenceSessions')
+    def queryConferenceSessions(self, request):
+        """Query for Sessions within a conference"""
+        session_list = self._getConferenceSessionQuery(request)
         return SessionListResponse(items=[self._copySessionToForm(session) for session in session_list])
 
 
