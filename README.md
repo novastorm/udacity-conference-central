@@ -22,32 +22,45 @@ Explore the API endpoints with the [API Explorer] (http://omgidb-conference-cent
 
 #### Task 1: Add Sessions to a Conference
 
-Conferences present sessions and their associated speakers for attendees to experience.
+<!--Conferences present sessions and their associated speakers for attendees to experience.
 
 Sessions are implemented using a Conference as the parent. This method creates a relationship with the parent object and takes advatange of datastores ancestor query capabilities.
 
-The relationship between Session and Speaker is described using a structured property represented by a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore.
+The relationship between Session and Speaker is described using a structured property represented by a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore.-->
 
+Sessions<sup>[1](#SessionObject)</sup> are inherently tied to a conference and thus are created  with a conference as it's parent. This also has the added benefit of allowing session queries by conference.
+
+A speaker may speak at multiple sessions. To forgo having to enter speaker details for every session, a separate Speaker<sup>[2](#SpeakerObject)</sup> object is created.
+
+The relationship between Sessions and Speakers is accomplished with intermediate relationships<sup>[3](#Relationships)</sup>. SpeakerLink<sup>[4](#SpeakerLinkObject)</sup> provides a speaker reference and SessionLink<sup>[5](#SessionLinkObject)</sup> provides a session reference.
+
+This architecture is choosen to facilitate a document-oriented paradigm, whereby the document contains related data in a single record. The links also contain a reference to the link object for quick reference.
 
 #### Task 2: Add Sessions to User Wishlist
 
-Users should be able to mark some sessions that they are interested in and retrieve their own current wishlist.
-
-Updated Profile object to include a structure property representing a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore. 
-
-
-##### Profile (updates)
-
-sessionWishList property added to store the session wishlist references.
-
-Property   | Type
----------- | ----------------------------------
-sessionWishList | structured (SessionLink, repeated)
+The Profile object is updated to include a structure property representing a SessionLink object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore. 
 
 
 #### Task 3: Work on indexes and queries
 
-##### Additional Queries
+Datastore only allows inequality queries on one property. Working around this required an approach combining features available with a Datastore query augmented with additional application code.
+
+The approach used here is to parse the query filters and assemble as much as possible into a datastore query then programmatically loop through the remaining filters within the application code.
+
+##### Additional Endpoints
+
+- RSS feed
+
+- queryConferenceSessions
+
+	Query Conference sessions with the following options:
+	
+	- 'TYPE': 'typeOfSession',
+	- 'DATE': 'date',
+	- 'START': 'startTime',
+	- 'DURATION': 'duration',
+
+
 ##### Challenge Question
 
 *Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?*
@@ -72,8 +85,9 @@ GET conference/session/wishlist | getSessionsInWishlist | query for all the sess
 
 ### Objects
 
-##### Session Object
 
+<a name="SessionObject"></a>
+##### Session Object
 Implemented as a child of a conference.
 
 Session.speakers is a list of SpeakerLink items containing  commonly queried data with the Session object in addition to a reference to the Speaker
@@ -89,6 +103,7 @@ endtime       | time
 speakers      | structured (SpeakerLink, repeated)
 
 
+<a name="SpeakerObject"></a>
 ##### Speaker Object
 
 Speakers will have their own description and possibly additional information.
@@ -102,10 +117,12 @@ description | string
 sessions    | structured (SessionLink, repeated)
 
 
+<a name="Relationships"></a>
 ##### Relationships
 
 Session/Speaker relationships are handled with structured properties in the Session and Speaker objects instead of an intermediate table to reduce datastore queries.
 
+<a name="SessionLinkObject"></a>
 ###### SessionLink
 
 The SessionLink object contains the minimum information commonly referenced for the Session object.
@@ -115,6 +132,7 @@ Property   | Type
 name       | string, required
 websafeKey | string, required
 
+<a name="SpeakerLinkObject"></a>
 ###### SpeakerLink
 
 The SpeakerLink object contains the minimum information commonly referenced for the Speaker object.
