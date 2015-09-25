@@ -45,11 +45,22 @@ The Profile object is updated to include a structure property representing a Ses
 
 Datastore only allows inequality queries on one property. Working around this required an approach combining features available with a Datastore query augmented with additional application code.
 
-The approach used here is to parse the query filters and assemble as much as possible into a datastore query then programmatically loop through the remaining filters within the application code.
+The approach used here is to parse the query filters and assemble as much as possible into a datastore query then programmatically loop through the remaining filters within the application code. This lead to the generic query feature design handling a variety of query input filters.
+
+In addition to the challenge of querying multiple properties using datastore, further clarification is required for the question of handling "non-workshop sessions before 7pm". "Non-workshops" is trivial, analyzing "sessions before 7pm" brings requires clarification of these questions:
+
+1. Sessions starting before 7:00 PM
+2. Sessions ending before 7:00 PM
+
+1 can be implemented without additional object changes.
+2 requires adding a calculated end time to the Session object.
 
 ##### Additional Endpoints
 
 - RSS feed
+
+	Responds with the 10 most recently added or updated sessions
+	for a given conference.
 
 - queryConferenceSessions
 
@@ -60,13 +71,6 @@ The approach used here is to parse the query filters and assemble as much as pos
 	- 'START': 'startTime',
 	- 'DURATION': 'duration',
 
-
-##### Challenge Question
-
-*Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?*
-
-- workshop sessions that begin before 7pm
-- workshop sessions that end before 7pm
 
 #### Task 4: Add a Task
 
