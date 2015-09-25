@@ -1471,8 +1471,8 @@ class ConferenceApi(remote.Service):
         speaker.sessions.append(a_session_link)
 
         ndb.put_multi([session, speaker])
-        # TODO: if speaker sessions > 1 then add to memcache
-        self._updateFeaturedSpeaker(speaker)
+
+        self._updateFeaturedSpeaker(session.key.parent(), speaker)
 
         return BooleanMessage(data=True)
 
@@ -1559,10 +1559,29 @@ class ConferenceApi(remote.Service):
         return self._getSessionsBySpeaker(request)
 
 
-    def _updateFeaturedSpeaker(self, speaker):
+    @ndb.tasklet
+    def _getConferenceSessionsBySpeaker(self, conference_key, speaker_key):
+        """Get list of sessions for the given Conference and Speaker"""
+
+        wsk_speaker = speaker_key.urlsafe()
+
+        result = yield Session.query(
+            Session.speakers.websafeKey==wsk_speaker,
+            ancestor=conference_key).fetch_async()
+
+        raise ndb.Return(result)
+
+
+    @ndb.tasklet
+    def _updateFeaturedSpeaker(self, conference_key, speaker):
         """Update featured speaker in memcache"""
-        # TODO: implement update featured speaker
-        pass
+        session_list_future = self._getConferenceSessionsBySpeaker(conference_key, speaker.key)
+        session_list = session_list_future.get_result()
+        if len(session_list) > 1:
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
+
+        raise ndb.Return(None)
+
 
     @endpoints.method(message_types.VoidMessage, SpeakerResponse,
         path='featured_speakers',
