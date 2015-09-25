@@ -1580,8 +1580,6 @@ class ConferenceApi(remote.Service):
         if len(session_list) > 1:
             memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
 
-        raise ndb.Return(None)
-
 
     @endpoints.method(message_types.VoidMessage, SpeakerResponse,
         path='featured_speakers',
