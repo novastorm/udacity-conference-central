@@ -1316,8 +1316,6 @@ class ConferenceApi(remote.Service):
             in request.all_fields()
             }
 
-        del data['websafeKey']
-
         a_speaker = Speaker(**data)
         a_speaker.put()
         return self._copySpeakerToForm(a_speaker)
