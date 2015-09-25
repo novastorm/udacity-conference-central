@@ -71,6 +71,8 @@ API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
+
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 DEFAULTS = {
@@ -1469,7 +1471,8 @@ class ConferenceApi(remote.Service):
         speaker.sessions.append(a_session_link)
 
         ndb.put_multi([session, speaker])
-        # TODO: if speaker sessions > 1 then add to memcache
+
+        self._updateFeaturedSpeaker(session.key.parent(), speaker)
 
         return BooleanMessage(data=True)
 
@@ -1554,6 +1557,42 @@ class ConferenceApi(remote.Service):
     def getSessionsBySpeaker(self, request):
         """Get list of sessions by speaker across all conferences"""
         return self._getSessionsBySpeaker(request)
+
+
+    @ndb.tasklet
+    def _getConferenceSessionsBySpeaker(self, conference_key, speaker_key):
+        """Get list of sessions for the given Conference and Speaker"""
+
+        wsk_speaker = speaker_key.urlsafe()
+
+        result = yield Session.query(
+            Session.speakers.websafeKey==wsk_speaker,
+            ancestor=conference_key).fetch_async()
+
+        raise ndb.Return(result)
+
+
+    @ndb.tasklet
+    def _updateFeaturedSpeaker(self, conference_key, speaker):
+        """Update featured speaker in memcache"""
+        session_list_future = self._getConferenceSessionsBySpeaker(conference_key, speaker.key)
+        session_list = session_list_future.get_result()
+        if len(session_list) > 1:
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
+
+        raise ndb.Return(None)
+
+
+    @endpoints.method(message_types.VoidMessage, SpeakerResponse,
+        path='featured_speakers',
+        http_method='GET',
+        name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return list of featured speakers"""
+        speaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
+        if not speaker:
+            return SpeakerResponse()
+        return self._copySpeakerToForm(speaker)
 
 
 api = endpoints.api_server([ConferenceApi]) # register API
