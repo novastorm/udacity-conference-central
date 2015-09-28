@@ -22,12 +22,6 @@ Explore the API endpoints with the [API Explorer] (http://omgidb-conference-cent
 
 #### Task 1: Add Sessions to a Conference
 
-<!--Conferences present sessions and their associated speakers for attendees to experience.
-
-Sessions are implemented using a Conference as the parent. This method creates a relationship with the parent object and takes advatange of datastores ancestor query capabilities.
-
-The relationship between Session and Speaker is described using a structured property represented by a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore.-->
-
 Sessions<sup>[1](#SessionObject)</sup> are inherently tied to a conference and thus are created  with a conference as it's parent. This also has the added benefit of allowing session queries by conference.
 
 A speaker may speak at multiple sessions. To forgo having to enter speaker details for every session, a separate Speaker<sup>[2](#SpeakerObject)</sup> object is created.
@@ -52,8 +46,9 @@ In addition to the challenge of querying multiple properties using datastore, fu
 1. Sessions starting before 7:00 PM
 2. Sessions ending before 7:00 PM
 
-1 can be implemented without additional object changes.
-2 requires adding a calculated end time to the Session object.
+1 - can be implemented without additional object changes.
+
+2 - requires adding a calculated end time to the Session object.
 
 ##### Additional Endpoints
 
@@ -70,9 +65,12 @@ In addition to the challenge of querying multiple properties using datastore, fu
 	- 'DATE': 'date',
 	- 'START': 'startTime',
 	- 'DURATION': 'duration',
+	- 'END': 'endTime',
 
 
 #### Task 4: Add a Task
+
+This task is accomplished by modifying the addSessionSpeaker feature. When adding a speaker to a session the session parent and speaker are passed to 
 
 
 ### Endpoints

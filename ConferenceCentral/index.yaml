@@ -99,8 +99,12 @@ indexes:
   ancestor: yes
   properties:
   - name: date
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
   - name: duration
-  - name: name
 
 - kind: Session
   ancestor: yes
@@ -108,7 +112,6 @@ indexes:
   - name: date
   - name: duration
   - name: startTime
-  - name: name
 
 - kind: Session
   ancestor: yes
@@ -116,20 +119,12 @@ indexes:
   - name: date
   - name: duration
   - name: typeOfSession
-  - name: name
-
-- kind: Session
-  ancestor: yes
-  properties:
-  - name: date
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: date
   - name: startTime
-  - name: name
 
 - kind: Session
   ancestor: yes
@@ -137,27 +132,23 @@ indexes:
   - name: date
   - name: startTime
   - name: typeOfSession
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: date
   - name: typeOfSession
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: duration
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: duration
   - name: startTime
-  - name: name
 
 - kind: Session
   ancestor: yes
@@ -170,38 +161,31 @@ indexes:
   properties:
   - name: duration
   - name: typeOfSession
-  - name: name
+  - name: startTime
 
 - kind: Session
   ancestor: yes
   properties:
-  - name: duration
-  - name: typeOfSession
-  - name: startTime
-  - name: name
+  - name: endTime
 
 - kind: Session
   ancestor: yes
   properties:
   - name: startTime
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: startTime
   - name: typeOfSession
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: typeOfSession
-  - name: name
 
 - kind: Session
   ancestor: yes
   properties:
   - name: typeOfSession
   - name: startTime
-  - name: name
