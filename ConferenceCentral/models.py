@@ -12,11 +12,10 @@ created/forked from conferences.py by wesc on 2014 may 24
 
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
-import httplib
 import endpoints
+import httplib
 
-from datetime import datetime
-from datetime import timedelta
+import datetime
 
 from protorpc import messages
 from google.appengine.ext import ndb
@@ -164,8 +163,20 @@ class Session(ndb.Model):
     duration      = ndb.IntegerProperty()
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
     date          = ndb.DateProperty(default=None)
-    startTime     = ndb.TimeProperty()
+    startTime     = ndb.TimeProperty(default=None)
+    # endTime       = ndb.ComputedProperty(lambda self:
+    #         datetime.datetime.combine(datetime.date(1970,1,1), self.startTime) + datetime.timedelta(minutes=self.duration)
+    #             if (self.startTime and self.duration)
+    #             else None)
+    endTime       = ndb.TimeProperty(default=None)
     speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
+
+    def _pre_put_hook(self):
+        if (self.startTime and self.duration):
+            self.endTime = (datetime.datetime.combine(datetime.date(1970,1,1), self.startTime) + datetime.timedelta(minutes=self.duration)).time()
+        else:
+            del self.endTime
+
 
 class SessionResponse(messages.Message):
     """SessionResponse -- Session outbound form message"""
@@ -175,8 +186,9 @@ class SessionResponse(messages.Message):
     typeOfSession = messages.StringField(4)
     date          = messages.StringField(5) # DateField YYYY-MM-DD
     startTime     = messages.StringField(6) # TimeField HH:MM
-    websafeKey    = messages.StringField(7)
-    speakers      = messages.MessageField(SpeakerLinkResponse, 8, repeated=True)
+    endTime       = messages.StringField(7) # TimeField HH:MM
+    websafeKey    = messages.StringField(8)
+    speakers      = messages.MessageField(SpeakerLinkResponse, 9, repeated=True)
 
 class SessionListResponse(messages.Message):
     """SessionListResponse -- multiple Session outbound form message"""

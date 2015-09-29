@@ -105,6 +105,7 @@ SESSION_FIELDS = {
     'DATE': 'date',
     'START': 'startTime',
     'DURATION': 'duration',
+    'END': 'endTime'
 }
 
 STRING = "string"
@@ -754,7 +755,9 @@ class ConferenceApi(remote.Service):
         a_form = SessionResponse()
         for field in a_form.all_fields():
             if hasattr(a_session, field.name):
-                if field.name == 'date' or field.name == 'startTime':
+                if field.name in ('date', 'startTime'):
+                    setattr(a_form, field.name, str(getattr(a_session, field.name)))
+                elif field.name in ('endTime'):
                     setattr(a_form, field.name, str(getattr(a_session, field.name)))
                 elif field.name == 'speakers':
                     speakerLinks=[self._copySpeakerLinkToForm(speaker) for speaker in getattr(a_session, field.name)]
@@ -838,6 +841,7 @@ class ConferenceApi(remote.Service):
                     data = datetime.strptime(data, "%H:%M").time()
                 # write to Conference object
                 setattr(a_session, field.name, data)
+
         a_session.put()
         # TODO: update areas with SessionLinks
         # update speaker sessions
@@ -942,7 +946,7 @@ class ConferenceApi(remote.Service):
                 filterField = filterObject["field"]
                 if filterField in ["duration"]:
                     aFilter = self._sessionFilter(filterObject, INT)
-                elif filterField in ["startTime"]:
+                elif filterField in ["startTime", "endTime"]:
                     aFilter = self._sessionFilter(filterObject, TIME)
                 elif filterField in ["date"]:
                     aFilter = self._sessionFilter(filterObject, DATE)
@@ -1034,8 +1038,10 @@ class ConferenceApi(remote.Service):
         def aFilter(record):
             target = getattr(record, _field)
             value = _value
+            # TODO: check for None values.
+            # may have to separate check for != and other
             print "*** * ***"
-            print target, value
+            print target, _operator, value
             return eval("target %s value" % _operator)
 
         return aFilter
@@ -1051,8 +1057,9 @@ class ConferenceApi(remote.Service):
             _value = None
         def aFilter(record):
             target = getattr(record, _field) or None
+            # TODO: check for None values.
             print "*** * ***"
-            print target, _value
+            print target, _operator, value
             if ((target in [None, ""]) and (_operator not in ["=", "!="])):
                 return False
             value = _value

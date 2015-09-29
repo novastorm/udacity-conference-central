@@ -22,17 +22,11 @@ Explore the API endpoints with the [API Explorer] (http://omgidb-conference-cent
 
 #### Task 1: Add Sessions to a Conference
 
-<!--Conferences present sessions and their associated speakers for attendees to experience.
+[Sessions](#SessionObject) are inherently tied to a conference and thus are created  with a conference as it's parent. This also has the added benefit of allowing session queries by conference.
 
-Sessions are implemented using a Conference as the parent. This method creates a relationship with the parent object and takes advatange of datastores ancestor query capabilities.
+A speaker may speak at multiple sessions. To forgo having to enter speaker details for every session, a separate [Speaker](#SpeakerObject) object is created.
 
-The relationship between Session and Speaker is described using a structured property represented by a link object containing minimal information commonly requested with the referencing object. This method preserves the idea of a an object as a document containing pertinent information in addition to  minimizing reads from the datastore.-->
-
-Sessions<sup>[1](#SessionObject)</sup> are inherently tied to a conference and thus are created  with a conference as it's parent. This also has the added benefit of allowing session queries by conference.
-
-A speaker may speak at multiple sessions. To forgo having to enter speaker details for every session, a separate Speaker<sup>[2](#SpeakerObject)</sup> object is created.
-
-The relationship between Sessions and Speakers is accomplished with intermediate relationships<sup>[3](#Relationships)</sup>. SpeakerLink<sup>[4](#SpeakerLinkObject)</sup> provides a speaker reference and SessionLink<sup>[5](#SessionLinkObject)</sup> provides a session reference.
+The relationship between Sessions and Speakers is accomplished with [intermediate relationships](#Relationships). [SpeakerLink](#SpeakerLinkObject) provides a speaker reference and [SessionLink](#SessionLinkObject) provides a session reference.
 
 This architecture is choosen to facilitate a document-oriented paradigm, whereby the document contains related data in a single record. The links also contain a reference to the link object for quick reference.
 
@@ -52,27 +46,54 @@ In addition to the challenge of querying multiple properties using datastore, fu
 1. Sessions starting before 7:00 PM
 2. Sessions ending before 7:00 PM
 
-1 can be implemented without additional object changes.
-2 requires adding a calculated end time to the Session object.
+Addressing this ambiguity an endTime property is added to the Session object and automatically calculated on save.
 
 ##### Additional Endpoints
 
-- RSS feed
+- Query Conference Sessions  
+  Query the sessions of a given conference using the supplied filters.  
 
-	Responds with the 10 most recently added or updated sessions
-	for a given conference.
+  URI | endpoint
+  --- | --------
+  POST queryConferenceSessions | queryConferenceSessions
+  
+  filter field format:
+  `{"filters": [ {"field": "", "operator": "", "value": ""} ]}`
 
-- queryConferenceSessions
+  - **field** can be of the following:
+  
+     - TYPE, DATE, START, DURATION, END
 
-	Query Conference sessions with the following options:
-	
-	- 'TYPE': 'typeOfSession',
-	- 'DATE': 'date',
-	- 'START': 'startTime',
-	- 'DURATION': 'duration',
+  - **operator** can be of the following:
+  
+     - EQ, GT, GE, LT, LE, NE
 
+  - **value** can be any value appropriate for the field.
+
+- Session, Speaker, and Session/Speaker Relationship Management  
+  Management tools to create the objects and their relationships.
+  
+  URI | endpoint
+  --- | --------
+  POST conference/{websafeConferenceKey}/session | createSession
+  GET conference/session/{websafeSessionKey} | showSession
+  PUT conference/session/{websafeSessionKey} | updateSession
+  DELETE conference/session/{websafeSessionKey} | destroySession
+  |
+  GET speaker | getSpeakers
+  |
+  POST speaker | createSpeaker
+  GET speaker/{websafeSpeakerKey} | showSpeaker
+  PUT speaker/{websafeSpeakerKey} | updateSpeaker
+  DELETE speaker/{websafeSpeakerKey} | destroySpeaker
+  |
+  POST session/speaker?websafeSessionKey=;websafeSpeakerKey= | addSessionSpeaker
+  DELETE session/speaker?websafeSessionKey=;websafeSpeakerKey= | removeSessionSpeaker
+  
 
 #### Task 4: Add a Task
+
+This task is accomplished by modifying the addSessionSpeaker feature. When adding a speaker to a session the session parent and speaker are passed to 
 
 
 ### Endpoints
