@@ -952,7 +952,6 @@ class ConferenceApi(remote.Service):
                     aFilter = self._sessionFilter(filterObject, DATE)
                 else:
                     aFilter = self._sessionFilter(filterObject)
-                print aFilter
                 session_list = filter(aFilter, session_list)
                 session_list = sorted(session_list, key=lambda session: getattr(session, filterField))
 
@@ -1055,13 +1054,9 @@ class ConferenceApi(remote.Service):
             _value = None
         def aFilter(record):
             target = getattr(record, _field) or None
-            # TODO: check for None values.
-            print "*** * ***"
-            print target, _operator, value
             if ((target in [None, ""]) and (_operator not in ["=", "!="])):
                 return False
             value = _value
-            print "target %s value" % _operator
             return eval("target %s value" % _operator)
 
         return aFilter
@@ -1356,7 +1351,6 @@ class ConferenceApi(remote.Service):
         speaker = self._getSpeaker(request.websafeSpeakerKey)
 
         # remove speaker only if session count is zero
-        print "speaker sessions: [%s]" % len(speaker.sessions)
         if len(speaker.sessions) > 0:
             raise endpoints.BadRequestException(
                 "Sessions is not empty")
