@@ -1040,8 +1040,6 @@ class ConferenceApi(remote.Service):
             value = _value
             # TODO: check for None values.
             # may have to separate check for != and other
-            print "*** * ***"
-            print target, _operator, value
             return eval("target %s value" % _operator)
 
         return aFilter
@@ -1479,7 +1477,13 @@ class ConferenceApi(remote.Service):
 
         ndb.put_multi([session, speaker])
 
-        self._updateFeaturedSpeaker(session.key.parent(), speaker)
+        # self._updateFeaturedSpeaker(session.key.parent(), speaker)
+        taskqueue.add(
+            params={
+                'websafeConferenceKey': session.key.parent().urlsafe(),
+                'websafeSpeakerKey': speaker.key.urlsafe()},
+            url='/tasks/update_featured_speaker'
+        )
 
         return BooleanMessage(data=True)
 
@@ -1566,26 +1570,26 @@ class ConferenceApi(remote.Service):
         return self._getSessionsBySpeaker(request)
 
 
-    @ndb.tasklet
-    def _getConferenceSessionsBySpeaker(self, conference_key, speaker_key):
-        """Get list of sessions for the given Conference and Speaker"""
+    # @ndb.tasklet
+    # def _getConferenceSessionsBySpeaker(self, conference_key, speaker_key):
+    #     """Get list of sessions for the given Conference and Speaker"""
 
-        wsk_speaker = speaker_key.urlsafe()
+    #     wsk_speaker = speaker_key.urlsafe()
 
-        result = yield Session.query(
-            Session.speakers.websafeKey==wsk_speaker,
-            ancestor=conference_key).fetch_async()
+    #     result = yield Session.query(
+    #         Session.speakers.websafeKey==wsk_speaker,
+    #         ancestor=conference_key).fetch_async()
 
-        raise ndb.Return(result)
+    #     raise ndb.Return(result)
 
 
-    @ndb.tasklet
-    def _updateFeaturedSpeaker(self, conference_key, speaker):
-        """Update featured speaker in memcache"""
-        session_list_future = self._getConferenceSessionsBySpeaker(conference_key, speaker.key)
-        session_list = session_list_future.get_result()
-        if len(session_list) > 1:
-            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
+    # @ndb.tasklet
+    # def _updateFeaturedSpeaker(self, conference_key, speaker):
+    #     """Update featured speaker in memcache"""
+    #     session_list_future = self._getConferenceSessionsBySpeaker(conference_key, speaker.key)
+    #     session_list = session_list_future.get_result()
+    #     if len(session_list) > 1:
+    #         memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
 
 
     @endpoints.method(message_types.VoidMessage, SpeakerResponse,
