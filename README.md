@@ -93,7 +93,7 @@ Addressing this ambiguity an endTime property is added to the Session object and
 
 #### Task 4: Add a Task
 
-This task is accomplished by modifying the addSessionSpeaker feature. When adding a speaker to a session the session parent and speaker are passed to 
+This task is accomplished by modifying the addSessionSpeaker feature. The Speaker and session Conference are handed off to the Update featured speaker task for concurrent processing.
 
 
 ### Endpoints

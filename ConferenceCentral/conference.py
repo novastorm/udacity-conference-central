@@ -310,7 +310,7 @@ class ConferenceApi(remote.Service):
 
 
     def _createConferenceObject(self, request):
-        """Create or update Conference object, returning ConferenceForm/request."""
+        """Create Conference object, returning ConferenceForm/request."""
         # preload necessary data items
         user = endpoints.get_current_user()
         if not user:
@@ -363,6 +363,7 @@ class ConferenceApi(remote.Service):
 
     @ndb.transactional()
     def _updateConferenceObject(self, request):
+        """Update Conference object, returning ConferenceForm/request."""
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
@@ -805,9 +806,6 @@ class ConferenceApi(remote.Service):
         # create session
         a_session = Session(**data)
         a_session.put()
-        # append session to conference
-        # a_conference.sessions.append(session_key.urlsafe())
-        # a_conference.put()
 
         return self._copySessionToForm(a_session)
 
@@ -901,7 +899,7 @@ class ConferenceApi(remote.Service):
 
 
     def _listConferenceSessions(self, request):
-        """List session objects, return SessionListResponse"""
+        """Get list of session objects, return SessionListResponse"""
         a_conference_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         session_list = Session.query(ancestor=a_conference_key).fetch()
 
@@ -991,6 +989,7 @@ class ConferenceApi(remote.Service):
 
 
     def _sessionFilter(self, filterObject, type=STRING):
+        """Factory function to return appropriate filter function"""
         if type == INT:
             return self._sessionFilterInt(filterObject)
 
