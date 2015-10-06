@@ -17,6 +17,43 @@ View the demo at: [omgidb-conference-central.appspot.com](http://omgidb-conferen
 
 Explore the API endpoints with the [API Explorer] (http://omgidb-conference-central.appspot.com/_ah/api/explorer)
 
+### Usage
+
+* Requirements:
+  * Google App Engine SDK for Python
+  * This Repo
+
+* Configure  
+  Configure with personal project id and client id
+  * app.yaml
+
+  ```
+  application: project-id
+  ...
+  ```
+  
+  * settings.py
+
+  ```
+  WEB_CLIENT_ID = 'Client ID'
+
+  ```
+
+  * static/app.js
+
+  ```
+  app.factory('oauth2Provider', function ($modal) {
+    var oauth2Provider = {
+        CLIENT_ID: 'CLIENT ID',
+  ...
+  ```
+
+* Run with GoogleAppEngineLaungher GUI
+  * Select from the menu, File > Add Existing Application
+  * Load this project
+  * Click [Run] to run locally
+  * Click [Deploy] to to deploy to the App Engine service
+
 
 ### Project Tasks
 
@@ -47,6 +84,8 @@ In addition to the challenge of querying multiple properties using datastore, fu
 2. Sessions ending before 7:00 PM
 
 Addressing this ambiguity an endTime property is added to the Session object and automatically calculated on save.
+
+This featured is implemented within the **queryConferenceSessions** method
 
 ##### Additional Endpoints
 
