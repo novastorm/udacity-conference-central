@@ -807,7 +807,8 @@ class ConferenceApi(remote.Service):
         a_session = Session(**data)
         a_session.put()
 
-        return self._copySessionToForm(a_session)
+        return a_session
+        # return self._copySessionToForm(a_session)
 
 
     def _showSessionObject(self, request):
@@ -868,7 +869,8 @@ class ConferenceApi(remote.Service):
         name='createSession')
     def createSession(self, request):
         """Create conference session"""
-        return self._storeSessionObject(request)
+        session = self._storeSessionObject(request)
+        return self._copySessionToForm(session)
 
 
     @endpoints.method(CONF_SESS_SHOW_REQUEST, SessionResponse,
