@@ -1,4 +1,4 @@
-application: omgidb-scalable-app
+application: omgidb-conference-central
 version: 1
 runtime: python27
 api_version: 1
@@ -33,6 +33,9 @@ handlers:       # static then dynamic
 - url: /tasks/send_confirmation_email
   script: main.app
 
+- url: /tasks/update_featured_speaker
+  script: main.app
+
 - url: /crons/set_announcement
   script: main.app
 
@@ -51,3 +54,11 @@ libraries:
 # pycrypto library used for OAuth2 (req'd for authenticated APIs)
 - name: pycrypto
   version: latest
+
+
+skip_files:
+
+- ^bin$
+- ^lib/python.*$
+- ^include/python.*$
+- ^(.*/)?.*\py[co]$

@@ -12,8 +12,11 @@ created/forked from conferences.py by wesc on 2014 may 24
 
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
-import httplib
 import endpoints
+import httplib
+
+import datetime
+
 from protorpc import messages
 from google.appengine.ext import ndb
 
@@ -21,24 +24,59 @@ class ConflictException(endpoints.ServiceException):
     """ConflictException -- exception mapped to HTTP 409 response"""
     http_status = httplib.CONFLICT
 
+class ConferenceLink(ndb.Model):
+    """ConferenceLink -- used to hold basic conference information for quick access
+    to pertinent conference information
+    """
+    name       = ndb.StringProperty(required=True)
+    websafeKey = ndb.StringProperty(required=True)
+
+class SessionLink(ndb.Model):
+    """SessionLink -- used to hold basic session information for quick access
+    to pertinent session information
+    """
+    name       = ndb.StringProperty(required=True)
+    websafeKey = ndb.StringProperty(required=True)
+
+class SessionLinkResponse(messages.Message):
+    """SessionLinkResponse -- SessionLink outboud form message."""
+    name       = messages.StringField(1)
+    websafeKey = messages.StringField(2)
+
+class SpeakerLink(ndb.Model):
+    """SpeakerLink -- used to hold basic speaker information for quick access
+    to pertinent speaker information
+    """
+    name       = ndb.StringProperty()
+    numberOfSessions = ndb.IntegerProperty()
+    websafeKey = ndb.StringProperty()
+
+class SpeakerLinkResponse(messages.Message):
+    """SpeakerLinkResponse -- SpeakerLink outboud form message."""
+    name       = messages.StringField(1)
+    numberOfSessions = messages.IntegerField(2)
+    websafeKey = messages.StringField(3)
+
 class Profile(ndb.Model):
     """Profile -- User profile object"""
-    displayName = ndb.StringProperty()
-    mainEmail = ndb.StringProperty()
-    teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
+    displayName     = ndb.StringProperty()
+    mainEmail       = ndb.StringProperty()
+    teeShirtSize    = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionWishlist = ndb.StructuredProperty(SessionLink, repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
-    displayName = messages.StringField(1)
+    displayName  = messages.StringField(1)
     teeShirtSize = messages.EnumField('TeeShirtSize', 2)
 
 class ProfileForm(messages.Message):
     """ProfileForm -- Profile outbound form message"""
-    displayName = messages.StringField(1)
-    mainEmail = messages.StringField(2)
-    teeShirtSize = messages.EnumField('TeeShirtSize', 3)
+    displayName     = messages.StringField(1)
+    mainEmail       = messages.StringField(2)
+    teeShirtSize    = messages.EnumField('TeeShirtSize', 3)
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
+    sessionWishlist = messages.StringField(5, repeated=True)
 
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
@@ -60,6 +98,8 @@ class Conference(ndb.Model):
     endDate         = ndb.DateProperty()
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
+    sessions        = ndb.StringProperty(repeated=True)
+    speakers        = ndb.StructuredProperty(SpeakerLink, repeated=True)
 
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
@@ -75,6 +115,8 @@ class ConferenceForm(messages.Message):
     endDate         = messages.StringField(10) #DateTimeField()
     websafeKey      = messages.StringField(11)
     organizerDisplayName = messages.StringField(12)
+    sessions        = messages.StringField(13, repeated=True)
+    speakers        = messages.StringField(14, repeated=True)
 
 class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
@@ -107,4 +149,144 @@ class ConferenceQueryForm(messages.Message):
 class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
+
+
+###############################################################################
+#
+# Session object
+#
+
+class Session(ndb.Model):
+    """Session -- Conference Session object"""
+    name          = ndb.StringProperty(required=True)
+    highlights    = ndb.StringProperty()
+    duration      = ndb.IntegerProperty()
+    typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
+    date          = ndb.DateProperty(default=None)
+    startTime     = ndb.TimeProperty(default=None)
+    # endTime       = ndb.ComputedProperty(lambda self:
+    #         datetime.datetime.combine(datetime.date(1970,1,1), self.startTime) + datetime.timedelta(minutes=self.duration)
+    #             if (self.startTime and self.duration)
+    #             else None)
+    endTime       = ndb.TimeProperty(default=None)
+    speakers      = ndb.StructuredProperty(SpeakerLink, repeated=True) # Speaker name
+
+    def _pre_put_hook(self):
+        if (self.startTime and self.duration):
+            self.endTime = (datetime.datetime.combine(datetime.date(1970,1,1), self.startTime) + datetime.timedelta(minutes=self.duration)).time()
+        else:
+            del self.endTime
+
+
+class SessionResponse(messages.Message):
+    """SessionResponse -- Session outbound form message"""
+    name          = messages.StringField(1)
+    highlights    = messages.StringField(2)
+    duration      = messages.IntegerField(3)
+    typeOfSession = messages.StringField(4)
+    date          = messages.StringField(5) # DateField YYYY-MM-DD
+    startTime     = messages.StringField(6) # TimeField HH:MM
+    endTime       = messages.StringField(7) # TimeField HH:MM
+    websafeKey    = messages.StringField(8)
+    speakers      = messages.MessageField(SpeakerLinkResponse, 9, repeated=True)
+
+class SessionListResponse(messages.Message):
+    """SessionListResponse -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionResponse, 1, repeated=True)
+
+
+class SessionQueryFilter(messages.Message):
+    """SessionQueryFilter -- Session query filter form"""
+    field = messages.StringField(1)
+    operator = messages.StringField(2)
+    value = messages.StringField(3)
+
+
+class SessionQueryRequest(messages.Message):
+    """SessionQueryRequest -- Multiple SessionQueryFilter request form"""
+    filters = messages.MessageField(SessionQueryFilter, 1, repeated=True)
+
+
+###############################################################################
+#
+# SessionType object
+#
+
+class SessionType(ndb.Model):
+    """SessionType -- Session type list"""
+    label = ndb.StringProperty()
+
+class SessionTypeRequest(messages.Message):
+    """SessionTypeResponse -- Session type response form"""
+    label      = messages.StringField(1)
+
+class SessionTypeResponse(messages.Message):
+    """SessionTypeResponse -- Session type response form"""
+    label      = messages.StringField(1)
+    websafeKey = messages.StringField(2)
+
+class SessionTypeListResponse(messages.Message):
+    """SessionTypeListResponse -- Session type list response form"""
+    items = messages.MessageField(SessionTypeResponse, 1, repeated=True)
+
+
+###############################################################################
+#
+# Wishlist object
+#
+
+class ConferenceSessionWishlistRequest(messages.Message):
+    """ConferenceSessionWishlistRequest -- Conference session wishlist request
+    form
+    """
+    websafeConferenceKey = messages.StringField(1)
+
+
+###############################################################################
+#
+# Speaker object
+#
+
+class Speaker(ndb.Model):
+    """Speaker -- Conference Speaker object"""
+    name        = ndb.StringProperty(required=True)
+    description = ndb.StringProperty()
+    sessions    = ndb.StructuredProperty(SessionLink, repeated=True) # Session name
+
+    # def sessions(self):
+    #     return Session.query(self.key.urlsafe().IN(Session.speakers))
+
+    # on update speaker
+    # update conferences containing this speaker
+    # update sessions containining this speaker
+
+
+class SpeakerRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    name        = messages.StringField(2)
+    description = messages.StringField(3)
+
+
+class SpeakerResponse(messages.Message):
+    """SpeakerForm -- Speaker outbound form message"""
+    name        = messages.StringField(1)
+    description = messages.StringField(2)
+    websafeKey  = messages.StringField(3)
+    sessions    = messages.MessageField(SessionLinkResponse, 4, repeated=True)
+
+
+class SpeakerListResponse(messages.Message):
+    """SpeakerForms -- multiple Speaker outbound form message"""
+    items = messages.MessageField(SpeakerResponse, 1, repeated=True)
+
+
+class SpeakerQueryRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    websafeConferenceKey = messages.StringField(1)
+
+
+class SpeakerSessionsRequest(messages.Message):
+    """SpeakerRequest -- Speaker outbound form message"""
+    websafeSpeakerKey = messages.StringField(1)
+    name        = messages.StringField(2)
 

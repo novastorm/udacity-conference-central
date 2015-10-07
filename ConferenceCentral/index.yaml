@@ -92,5 +92,105 @@ indexes:
 
 - kind: Conference
   properties:
+  - name: seatsAvailable
+  - name: name
+
+- kind: Conference
+  properties:
   - name: topics
   - name: name
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: duration
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: duration
+  - name: startTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: duration
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: startTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: startTime
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: date
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: duration
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: duration
+  - name: startTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: duration
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: duration
+  - name: typeOfSession
+  - name: startTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: endTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: startTime
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: startTime
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: typeOfSession
+
+- kind: Session
+  ancestor: yes
+  properties:
+  - name: typeOfSession
+  - name: startTime
