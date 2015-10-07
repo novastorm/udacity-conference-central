@@ -15,9 +15,13 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 import webapp2
 from google.appengine.api import app_identity
 from google.appengine.api import mail
+from google.appengine.api import memcache
 from google.appengine.ext import ndb
 from conference import ConferenceApi
+from conference import MEMCACHE_FEATURED_SPEAKER_KEY
 from models import Session
+
+
 
 class SetAnnouncementHandler(webapp2.RequestHandler):
     def get(self):
@@ -50,7 +54,7 @@ class UpdateFeaturedSpeakerHandler(webapp2.RequestHandler):
             ancestor=conference_key).fetch()
 
         if len(session_list) > 1:
-            speaker = ConferenceApi._getSpeaker(wsk_speaker)
+            speaker = ndb.Key(urlsafe=wsk_speaker).get()
             memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, speaker)
 
 
