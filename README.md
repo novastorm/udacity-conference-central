@@ -110,7 +110,7 @@ This featured is implemented within the **queryConferenceSessions** method
   - **value** can be any value appropriate for the field.
 
 - Session, Speaker, and Session/Speaker Relationship Management  
-  Management tools to create the objects and their relationships.
+  Management tools to create, update, delete the objects and their relationships.
   
   URI | endpoint
   --- | --------
